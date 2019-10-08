@@ -5,7 +5,13 @@
 executor = "0.0.2"
 ```
 
-Example:
+## Features
+- [x] handle single spawn
+- [x] handle basic futures
+- [ ] handle multi-entrant futures
+- [ ] handle more than one spawn
+
+## Example
 
 ```rust
 use executor::Executor;
