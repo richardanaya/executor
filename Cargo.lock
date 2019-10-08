@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "executor"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "once_cell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "woke 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",

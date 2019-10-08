@@ -4,6 +4,7 @@ version = "0.0.1"
 authors = ["Richard Anaya"]
 edition = "2018"
 description = "A minimalistic async/await executor for web assembly"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
