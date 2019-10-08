@@ -6,8 +6,8 @@ executor = "0.0.2"
 ```
 
 ## Features
-- [x] handle single spawn
-- [x] handle basic futures
+- [x] handle single spawn (i.e. don't spawn beyond your initial entry point)
+- [x] handle basic futures (i.e only futures that resolve once like most JS promises)
 - [ ] handle multi-entrant futures
 - [ ] handle more than one spawn
 
