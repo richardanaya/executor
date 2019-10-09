@@ -5,13 +5,6 @@
 executor = "0.0.3"
 ```
 
-## Features
-- [x] #![no_std]
-- [x] handle single spawn
-- [x] handle basic futures
-- [ ] handle multi-entrant futures
-- [ ] handle more than one spawn
-
 ## Example
 
 ```rust
@@ -19,14 +12,21 @@ use executor::Executor;
 
 pub fn main() -> () {
     Executor::spawn(async {
-        say_num(1);
-        sleep(1000).await;
-        say_num(2);
-        sleep(1000).await;
-        say_num(3);
+        console_log("Hello");
+        window_set_timeout(1000).await;
+        console_log("World");
+        window_set_timeout(1000).await;
+        console_log("!");
     });
 }
 ```
+
+## Features
+- [x] #![no_std]
+- [x] handle spawn (i.e. don't spawn beyond your initial entry point)
+- [x] handle non self waking futures (i.e futures that immediately return values and JS futures operate asynchronously)
+- [ ] handle more than one spawn ( needed for callbacks that start async work )
+- [ ] handle self waking futures (i.e. Since JS is single threaded, self waking futures cause a mutex lock, futures must call some other mechanism to asynchronously re-enter a web assembly module)
 
 # License
 
