@@ -1,6 +1,6 @@
 [package]
 name = "executor"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Richard Anaya"]
 edition = "2018"
 description = "A minimalistic async/await executor for web assembly"
@@ -10,4 +10,5 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 once_cell = "1.2.0"
-woke = "0.0.1"
+woke = "0.0.2"
+spin = "0.5.2"

@@ -1,12 +1,18 @@
+#![no_std]
+extern crate alloc;
 use once_cell::sync::OnceCell;
 use {
-    std::{
+    core::{
         future::Future,
-        pin::Pin,
-        sync::{Arc, Mutex},
         task::{Context, Poll},
+        pin::Pin,
+    },
+    alloc::{
+        boxed::Box,
+        sync::Arc,
     },
     woke::{waker_ref, Woke},
+    spin::Mutex
 };
 
 // our executor just holds one task
@@ -33,20 +39,20 @@ impl Executor {
         let task = Arc::new(Task {
             future: Mutex::new(Some(Box::pin(future))),
         });
-        let mut e = get_executor().lock().unwrap();
+        let mut e = get_executor().lock();
         e.task = Some(task);
 
         // we drop this early because otherwise run() will cause a mutex lock
-        std::mem::drop(e);
+        core::mem::drop(e);
 
         // get things going!
         Executor::run();
     }
     fn run() {
         // get our task from global state
-        let e = get_executor().lock().unwrap();
+        let e = get_executor().lock();
         if let Some(task) = &e.task {
-            let mut future_slot = task.future.lock().unwrap();
+            let mut future_slot = task.future.lock();
             if let Some(mut future) = future_slot.take() {
                 // make a waker for our task
                 let waker = waker_ref(&task);

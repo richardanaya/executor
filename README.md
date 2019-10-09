@@ -2,10 +2,11 @@
 
 ```toml
 [dependencies]
-executor = "0.0.2"
+executor = "0.0.3"
 ```
 
 ## Features
+- [x] #![no_std]
 - [x] handle single spawn
 - [x] handle basic futures
 - [ ] handle multi-entrant futures
