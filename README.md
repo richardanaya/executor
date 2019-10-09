@@ -22,7 +22,7 @@ pub fn main() -> () {
 ```
 
 ## Features
-- [x] handle single spawn (i.e. don't spawn beyond your initial entry point)
+- [x] handle spawn (i.e. don't spawn beyond your initial entry point)
 - [x] handle non self waking futures (i.e futures that immediately return values and JS futures operate asynchronously)
 - [ ] handle self waking futures (i.e. Since JS is single threaded, self waking futures cause a mutex lock, futures must call some other mechanism to asynchronously re-enter a web assembly module)
 - [ ] handle more than one spawn (I haven't encountered a good reason to do this)
