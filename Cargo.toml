@@ -5,6 +5,7 @@ authors = ["Richard Anaya"]
 edition = "2018"
 description = "A minimalistic async/await executor for web assembly"
 license = "MIT OR Apache-2.0"
+categories = ["wasm", "no-std"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
