@@ -12,11 +12,11 @@ use executor::Executor;
 
 pub fn main() -> () {
     Executor::spawn(async {
-        say_num(1);
-        sleep(1000).await;
-        say_num(2);
-        sleep(1000).await;
-        say_num(3);
+        console_log("Hello");
+        window_set_timeout(1000).await;
+        console_log("World");
+        window_set_timeout(1000).await;
+        console_log("!");
     });
 }
 ```
