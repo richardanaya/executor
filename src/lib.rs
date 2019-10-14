@@ -2,22 +2,19 @@
 extern crate alloc;
 use once_cell::sync::OnceCell;
 use {
+    alloc::{boxed::Box, collections::VecDeque, sync::Arc},
     core::{
         future::Future,
-        task::{Context, Poll},
         pin::Pin,
+        task::{Context, Poll},
     },
-    alloc::{
-        boxed::Box,
-        sync::Arc,
-    },
+    spin::Mutex,
     woke::{waker_ref, Woke},
-    spin::Mutex
 };
 
 // our executor just holds one task
 pub struct Executor {
-    task: Option<Arc<Task>>,
+    tasks: VecDeque<Arc<Task>>,
 }
 
 // Our task holds onto a future the executor can poll
@@ -40,7 +37,9 @@ impl Executor {
             future: Mutex::new(Some(Box::pin(future))),
         });
         let mut e = get_executor().lock();
-        e.task = Some(task);
+        let mut v = VecDeque::new();
+        v.push_back(task);
+        e.tasks = v;
 
         // we drop this early because otherwise run() will cause a mutex lock
         core::mem::drop(e);
@@ -50,17 +49,26 @@ impl Executor {
     }
     fn run() {
         // get our task from global state
-        let e = get_executor().lock();
-        if let Some(task) = &e.task {
-            let mut future_slot = task.future.lock();
-            if let Some(mut future) = future_slot.take() {
-                // make a waker for our task
-                let waker = waker_ref(&task);
-                // poll our future and give it a waker
-                let context = &mut Context::from_waker(&*waker);
-                if let Poll::Pending = future.as_mut().poll(context) {
-                    *future_slot = Some(future);
+        let mut e = get_executor().lock();
+        let count = e.tasks.len();
+        for _ in 0..count {
+            let task = e.tasks.pop_front().unwrap();
+            let mut is_pending = false;
+            {
+                let mut future_slot = task.future.lock();
+                if let Some(mut future) = future_slot.take() {
+                    // make a waker for our task
+                    let waker = waker_ref(&task);
+                    // poll our future and give it a waker
+                    let context = &mut Context::from_waker(&*waker);
+                    if let Poll::Pending = future.as_mut().poll(context) {
+                        *future_slot = Some(future);
+                        is_pending = true;
+                    }
                 }
+            }
+            if is_pending {
+                e.tasks.push_back(task);
             }
         }
     }
@@ -69,5 +77,9 @@ impl Executor {
 // get a global holder of our one task
 fn get_executor() -> &'static Mutex<Executor> {
     static INSTANCE: OnceCell<Mutex<Executor>> = OnceCell::new();
-    INSTANCE.get_or_init(|| Mutex::new(Executor { task: None }))
+    INSTANCE.get_or_init(|| {
+        Mutex::new(Executor {
+            tasks: VecDeque::new(),
+        })
+    })
 }
