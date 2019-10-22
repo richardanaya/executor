@@ -2,7 +2,11 @@
 
 ```toml
 [dependencies]
+<<<<<<< HEAD
 executor = "0.0.5"
+=======
+executor = "0.0.4"
+>>>>>>> 28698a2acc08a4dc59772dca60d7c355841b01ac
 ```
 
 ## Example
@@ -23,10 +27,9 @@ pub fn main() -> () {
 
 ## Features
 - [x] #![no_std]
-- [x] handle spawn (i.e. don't spawn beyond your initial entry point)
-- [x] handle non self waking futures (i.e futures that immediately return values and JS futures operate asynchronously)
-- [ ] handle more than one spawn ( needed for callbacks that start async work )
-- [ ] handle self waking futures (i.e. Since JS is single threaded, self waking futures cause a mutex lock, futures must call some other mechanism to asynchronously re-enter a web assembly module)
+- [x] handle more than one spawn to parallelize work
+- [x] simple enough to learn from!
+
 
 # License
 
