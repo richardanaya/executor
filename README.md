@@ -2,7 +2,7 @@
 
 ```toml
 [dependencies]
-executor = "0.0.3"
+executor = "0.0.5"
 ```
 
 ## Example

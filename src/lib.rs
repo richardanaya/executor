@@ -1,6 +1,5 @@
 #![no_std]
 extern crate alloc;
-use once_cell::sync::OnceCell;
 use {
     alloc::{boxed::Box, collections::VecDeque, sync::Arc},
     core::{
@@ -11,6 +10,8 @@ use {
     spin::Mutex,
     woke::{waker_ref, Woke},
 };
+#[macro_use]
+extern crate lazy_static;
 
 // our executor just holds one task
 pub struct Executor {
@@ -74,12 +75,17 @@ impl Executor {
     }
 }
 
-// get a global holder of our one task
-fn get_executor() -> &'static Mutex<Executor> {
-    static INSTANCE: OnceCell<Mutex<Executor>> = OnceCell::new();
-    INSTANCE.get_or_init(|| {
+
+
+lazy_static! {
+    static ref INSTANCE: Mutex<Executor> = {
         Mutex::new(Executor {
             tasks: VecDeque::new(),
         })
-    })
+    };
+}
+
+// get a global holder of our one task
+fn get_executor() -> &'static Mutex<Executor> {
+    &INSTANCE
 }
