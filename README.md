@@ -22,7 +22,7 @@ pub fn main() -> () {
 ```
 
 ## Features
-- [x] #![no_std]
+- [x] #![no_std] and minimally uses `alloc` (Box and Arc)
 - [x] handle more than one spawn to parallelize work
 - [x] simple enough to learn from!
 
