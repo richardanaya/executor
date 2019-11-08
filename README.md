@@ -2,11 +2,7 @@
 
 ```toml
 [dependencies]
-<<<<<<< HEAD
 executor = "0.0.5"
-=======
-executor = "0.0.4"
->>>>>>> 28698a2acc08a4dc59772dca60d7c355841b01ac
 ```
 
 ## Example
@@ -45,5 +41,5 @@ at your option.
 ### Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in woke by you, as defined in the Apache-2.0 license, shall be
+for inclusion in `executor` by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
