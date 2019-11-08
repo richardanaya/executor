@@ -1,7 +1,7 @@
 #![no_std]
 extern crate alloc;
 use {
-    alloc::{boxed::Box, collections::VecDeque, sync::Arc},
+    alloc::{boxed::Box, sync::Arc},
     core::{
         future::Future,
         pin::Pin,
@@ -10,12 +10,15 @@ use {
     spin::Mutex,
     woke::{waker_ref, Woke},
 };
+
+use smallvec::*;
+
 #[macro_use]
 extern crate lazy_static;
 
 // our executor just holds one task
 pub struct Executor {
-    tasks: VecDeque<Arc<Task>>,
+    tasks: SmallVec<[Arc<Task>;0]>,
 }
 
 // Our task holds onto a future the executor can poll
@@ -31,6 +34,7 @@ impl Woke for Task {
     }
 }
 
+
 impl Executor {
     pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
         // store our task in global state
@@ -38,8 +42,8 @@ impl Executor {
             future: Mutex::new(Some(Box::pin(future))),
         });
         let mut e = get_executor().lock();
-        let mut v = VecDeque::new();
-        v.push_back(task);
+        let mut v = SmallVec::new();
+        v.push(task);
         e.tasks = v;
 
         // we drop this early because otherwise run() will cause a mutex lock
@@ -53,7 +57,7 @@ impl Executor {
         let mut e = get_executor().lock();
         let count = e.tasks.len();
         for _ in 0..count {
-            let task = e.tasks.pop_front().unwrap();
+            let task = e.tasks.remove(0);
             let mut is_pending = false;
             {
                 let mut future_slot = task.future.lock();
@@ -69,7 +73,7 @@ impl Executor {
                 }
             }
             if is_pending {
-                e.tasks.push_back(task);
+                e.tasks.push(task);
             }
         }
     }
@@ -80,7 +84,7 @@ impl Executor {
 lazy_static! {
     static ref INSTANCE: Mutex<Executor> = {
         Mutex::new(Executor {
-            tasks: VecDeque::new(),
+            tasks: SmallVec::new(),
         })
     };
 }

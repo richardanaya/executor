@@ -1,6 +1,6 @@
 [package]
 name = "executor"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Richard Anaya"]
 edition = "2018"
 description = "A minimalistic async/await executor for web assembly"
@@ -12,6 +12,7 @@ categories = ["wasm", "no-std"]
 [dependencies]
 woke = "0.0.2"
 spin = "0.5"
+smallvec = "1.0.0"
 
 [dependencies.lazy_static]
 version = "1.4.0"
