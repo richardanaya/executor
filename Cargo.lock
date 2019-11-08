@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "executor"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
