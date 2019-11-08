@@ -18,7 +18,7 @@ extern crate lazy_static;
 
 // our executor just holds one task
 pub struct Executor {
-    tasks: SmallVec<[Arc<Task>;0]>,
+    tasks: SmallVec<[Arc<Task>;1024]>,
 }
 
 // Our task holds onto a future the executor can poll
