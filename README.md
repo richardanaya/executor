@@ -4,6 +4,10 @@
 [dependencies]
 executor = "0.0.8"
 ```
+## Features
+- [x] `#![no_std]` and minimally uses `alloc` (`Box` and `Arc`)
+- [x] handle more than one spawn to parallelize work
+- [x] simple enough to learn from!
 
 ## Example
 
@@ -20,11 +24,6 @@ pub fn main() -> () {
     });
 }
 ```
-
-## Features
-- [x] `#![no_std]` and minimally uses `alloc` (`Box` and `Arc`)
-- [x] handle more than one spawn to parallelize work
-- [x] simple enough to learn from!
 
 
 # License
