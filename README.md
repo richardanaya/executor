@@ -1,4 +1,4 @@
-# Executor
+# 💀 Executor
 
 ```toml
 [dependencies]
