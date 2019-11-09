@@ -2,7 +2,7 @@
 
 ```toml
 [dependencies]
-executor = "0.1.0"
+executor = "0.1"
 ```
 ## Features
 - [x] `#![no_std]` and minimally uses `alloc` (`Box` and `Arc`)
@@ -16,11 +16,11 @@ use executor::Executor;
 
 pub fn main() -> () {
     Executor::spawn(async {
-        console_log("Hello");
-        window_set_timeout(1000).await;
-        console_log("World");
-        window_set_timeout(1000).await;
-        console_log("!");
+        println!("Hello");
+        sleep(1000).await;
+        println!("World");
+        sleep(1000).await;
+        println!("!");
     });
 }
 ```

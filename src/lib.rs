@@ -55,7 +55,7 @@ impl Executor {
     }
 
     /// Add task for a future to the list of tasks
-    pub fn add_task(&mut self, future: impl Future<Output = ()> + 'static + Send) {
+    fn add_task(&mut self, future: impl Future<Output = ()> + 'static + Send) {
         // store our task
         let task = Arc::new(Task {
             future: Mutex::new(Some(Box::pin(future))),
@@ -65,7 +65,7 @@ impl Executor {
 
     /// For every current task, iterate through each one and poll them, if they are not done
     /// add them to end of list. If they are done, remove them from list of tasks.
-    pub fn poll_tasks(&mut self) {
+    fn poll_tasks(&mut self) {
         let count = self.tasks.len();
         for _ in 0..count {
             let task = self.tasks.remove(0);
