@@ -1,8 +1,8 @@
-# Executor: Async-Await in Web Assembly
+# Executor
 
 ```toml
 [dependencies]
-executor = "0.0.5"
+executor = "0.0.6"
 ```
 
 ## Example
