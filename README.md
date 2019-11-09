@@ -27,7 +27,7 @@ pub fn main() -> () {
 
 ## async-std
 
-Want to use async-std?
+Want to use [async-std](https://async.rs/)?
 
 ```
 use executor::*;
