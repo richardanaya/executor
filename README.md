@@ -7,7 +7,7 @@ executor = "0.1.0"
 ## Features
 - [x] `#![no_std]` and minimally uses `alloc` (`Box` and `Arc`)
 - [x] handle more than one spawn to parallelize work
-- [x] simple enough to learn from!
+- [x] simple enough to learn from! (< 100 lines)
 
 ## Example
 
