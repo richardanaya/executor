@@ -13,51 +13,62 @@ use {
 
 use smallvec::*;
 
-#[macro_use]
-extern crate lazy_static;
-
-// our executor just holds one task
+/// Executor holds a list of tasks to be processed
 pub struct Executor {
-    tasks: SmallVec<[Arc<Task>;64]>,
+    /// Tasks as a smallvec to try to keep it in the stack for as long as possible
+    tasks: SmallVec<[Arc<Task>; 64]>,
 }
 
-// Our task holds onto a future the executor can poll
+impl Default for Executor {
+    fn default() -> Self {
+        Executor {
+            tasks: SmallVec::new(),
+        }
+    }
+}
+
+/// Task is our unit of execution and holds a future are waiting on
 struct Task {
     pub future: Mutex<Option<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>>,
 }
 
-// specify how we want our tasks to wake up
+/// Implement what we would like to do when a task gets woken up
 impl Woke for Task {
     fn wake_by_ref(_: &Arc<Self>) {
-        // run the executor again because something finished!
+        // poll everything because future is done and may have created conditions for something to finish
         Executor::run()
     }
 }
 
-
 impl Executor {
+    // Add a task on the global executor
     pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
-        // store our task in global state
+        let mut e = globals::get::<Executor>().lock();
+        e.add_task(future);
+        e.poll_tasks();
+    }
+
+    // Poll all tasks on global executor
+    fn run() {
+        let mut e = globals::get::<Executor>().lock();
+        Executor::poll_tasks(&mut e);
+    }
+
+    /// Add task for a future to the list of tasks
+    pub fn add_task(&mut self, future: impl Future<Output = ()> + 'static + Send) {
+        // store our task
         let task = Arc::new(Task {
             future: Mutex::new(Some(Box::pin(future))),
         });
-        let mut e = get_executor().lock();
-        let mut v = SmallVec::new();
-        v.push(task);
-        e.tasks = v;
-
-        // we drop this early because otherwise run() will cause a mutex lock
-        core::mem::drop(e);
-
-        // get things going!
-        Executor::run();
+        self.tasks.push(task);
     }
-    fn run() {
-        // get our task from global state
-        let mut e = get_executor().lock();
-        let count = e.tasks.len();
+
+    /// For every current task, iterate through each one and poll them, if they are not done
+    /// add them to end of list. If they are done, remove them from list of tasks.
+    pub fn poll_tasks(&mut self) {
+        let count = self.tasks.len();
         for _ in 0..count {
-            let task = e.tasks.remove(0);
+            let task = self.tasks.remove(0);
             let mut is_pending = false;
             {
                 let mut future_slot = task.future.lock();
@@ -73,23 +84,8 @@ impl Executor {
                 }
             }
             if is_pending {
-                e.tasks.push(task);
+                self.tasks.push(task);
             }
         }
     }
-}
-
-
-
-lazy_static! {
-    static ref INSTANCE: Mutex<Executor> = {
-        Mutex::new(Executor {
-            tasks: SmallVec::new(),
-        })
-    };
-}
-
-// get a global holder of our one task
-fn get_executor() -> &'static Mutex<Executor> {
-    &INSTANCE
 }

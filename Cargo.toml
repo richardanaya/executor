@@ -1,9 +1,9 @@
 [package]
 name = "executor"
-version = "0.0.8"
+version = "0.1.0"
 authors = ["Richard Anaya"]
 edition = "2018"
-description = "A minimalistic async/await executor for web assembly"
+description = "A minimalistic async/await executor"
 license = "MIT OR Apache-2.0"
 categories = ["wasm", "no-std"]
 
@@ -13,6 +13,7 @@ categories = ["wasm", "no-std"]
 woke = "0.0.2"
 spin = "0.5"
 smallvec = "1.0.0"
+globals = "0.1.3"
 
 [dependencies.lazy_static]
 version = "1.4.0"
