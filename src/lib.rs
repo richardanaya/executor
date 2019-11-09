@@ -29,7 +29,7 @@ impl Default for Executor {
 
 /// Task is our unit of execution and holds a future are waiting on
 struct Task {
-    pub future: Mutex<Option<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>>,
+    pub future: Mutex<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
 
 /// Implement what we would like to do when a task gets woken up
@@ -58,7 +58,7 @@ impl Executor {
     fn add_task(&mut self, future: impl Future<Output = ()> + 'static + Send) {
         // store our task
         let task = Arc::new(Task {
-            future: Mutex::new(Some(Box::pin(future))),
+            future: Mutex::new(Box::pin(future)),
         });
         self.tasks.push(task);
     }
@@ -71,16 +71,13 @@ impl Executor {
             let task = self.tasks.remove(0);
             let mut is_pending = false;
             {
-                let mut future_slot = task.future.lock();
-                if let Some(mut future) = future_slot.take() {
-                    // make a waker for our task
-                    let waker = waker_ref(&task);
-                    // poll our future and give it a waker
-                    let context = &mut Context::from_waker(&*waker);
-                    if let Poll::Pending = future.as_mut().poll(context) {
-                        *future_slot = Some(future);
-                        is_pending = true;
-                    }
+                let mut future = task.future.lock();
+                // make a waker for our task
+                let waker = waker_ref(&task);
+                // poll our future and give it a waker
+                let context = &mut Context::from_waker(&*waker);
+                if let Poll::Pending = future.as_mut().poll(context) {
+                    is_pending = true;
                 }
             }
             if is_pending {
