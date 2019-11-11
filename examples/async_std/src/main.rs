@@ -1,22 +1,18 @@
-use executor::*;
-use std::time::Duration;
 use async_std::task;
-use core::sync::atomic::AtomicBool;
-use core::sync::atomic::Ordering;
+use executor::*;
 use std::thread;
-
-static IS_COMPLETE:AtomicBool = AtomicBool::new(false);
+use std::time::Duration;
 
 async fn run() {
     println!("hello");
     task::sleep(Duration::from_secs(1)).await;
     println!("world!");
-    IS_COMPLETE.store(true,Ordering::Release);
+    complete::mark_complete();
 }
 
 fn main() -> () {
     thread::spawn(move || {
         Executor::spawn(run());
     });
-    while !IS_COMPLETE.load(Ordering::Acquire) {}
+    complete::block_until_complete();
 }

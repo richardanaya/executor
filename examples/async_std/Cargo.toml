@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 executor = {path="../../"}
 async-std = "0.99"
+complete = "0.0.1"
 
 [profile.release]
 opt-level = 'z' 
