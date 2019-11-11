@@ -50,20 +50,18 @@ use async_std::task;
 use core::sync::atomic::{Ordering,AtomicBool};
 use std::thread;
 
-static IS_COMPLETE:AtomicBool = AtomicBool::new(false);
-
 async fn run() {
     println!("hello");
     task::sleep(Duration::from_secs(1)).await;
     println!("world!");
-    IS_COMPLETE.store(true,Ordering::Release);
+    complete::mark_complete();
 }
 
 fn main() -> () {
     thread::spawn(move || {
         Executor::spawn(run());
     });
-    while !IS_COMPLETE.load(Ordering::Acquire) {}
+    complete::block_until_complete();
 }
 ```
 
