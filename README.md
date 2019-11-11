@@ -16,14 +16,24 @@ executor = "0.1"
 ```rust
 use executor::Executor;
 
+[no_mangle]
 pub fn main() -> () {
     Executor::spawn(async {
-        println!("Hello");
-        sleep(1000).await;
-        println!("World");
-        sleep(1000).await;
-        println!("!");
+        console_log("Hello");
+        set_timeout(1000).await;
+        console_log("World");
+        set_timeout(1000).await;
+        console_log("!");
     });
+}
+
+fn set_timeout() -> Future {
+   // create a timeout future and store globally
+}
+
+[no_mangle]
+pub fn timeout_complete() -> () {
+    // find your timeout future and wake it's waker
 }
 ```
 
