@@ -27,7 +27,7 @@ pub fn main() -> () {
     });
 }
 
-fn set_timeout() -> TimeoutFuture {
+fn set_timeout(milliseconds:u32) -> TimeoutFuture {
    // create a timeout future and store globally
 }
 
