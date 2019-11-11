@@ -42,18 +42,15 @@ pub fn timeout_complete() -> () {
 Want to use [async-std](https://async.rs/)?
 
 ```
-use std::time::Duration;
-use std::thread;
-
 async fn run() {
     println!("hello");
-    async_std::task::sleep(Duration::from_secs(1)).await;
+    async_std::task::sleep(std::time::Duration::from_secs(1)).await;
     println!("world!");
     complete::mark_complete();
 }
 
 fn main() -> () {
-    thread::spawn(move || {
+    std::thread::spawn(move || {
         executor::spawn(run());
     });
     complete::block_until_complete();
