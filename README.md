@@ -13,6 +13,8 @@ executor = "0.1"
 
 ## Example
 
+A web assembly example
+
 ```rust
 use executor::Executor;
 
