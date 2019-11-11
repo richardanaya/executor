@@ -21,9 +21,7 @@ pub fn main() -> () {
     executor::spawn(async {
         console_log("Hello");
         set_timeout(1000).await;
-        console_log("World");
-        set_timeout(1000).await;
-        console_log("!");
+        console_log("World!");
     });
 }
 
