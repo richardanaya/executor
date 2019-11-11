@@ -39,7 +39,7 @@ pub fn timeout_complete() -> () {
 
 Want to use [async-std](https://async.rs/)?
 
-```
+```rust
 async fn run() {
     println!("hello");
     async_std::task::sleep(std::time::Duration::from_secs(1)).await;
