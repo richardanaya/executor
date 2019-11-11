@@ -16,11 +16,9 @@ executor = "0.1"
 A web assembly example
 
 ```rust
-use executor::Executor;
-
 [no_mangle]
 pub fn main() -> () {
-    Executor::spawn(async {
+    executor::spawn(async {
         console_log("Hello");
         set_timeout(1000).await;
         console_log("World");

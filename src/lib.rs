@@ -86,3 +86,7 @@ impl Executor {
         }
     }
 }
+
+pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
+    Executor::spawn(future);
+}
