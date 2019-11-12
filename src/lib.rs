@@ -43,14 +43,14 @@ impl Woke for Task {
 impl Executor {
     // Add a task on the global executor
     pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
-        let mut e = globals::get::<Executor>().lock();
+        let mut e = globals::get::<Executor>();
         e.add_task(future);
         e.poll_tasks();
     }
 
     // Poll all tasks on global executor
     fn run() {
-        let mut e = globals::get::<Executor>().lock();
+        let mut e = globals::get::<Executor>();
         Executor::poll_tasks(&mut e);
     }
 
