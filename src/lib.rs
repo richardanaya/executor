@@ -13,7 +13,7 @@ use {
 
 use smallvec::*;
 
-/// Executor holds a list of tasks to be processed
+/// Executor holds a list of futures to be polled.
 pub struct Executor {
     /// Tasks as a smallvec to try to keep it in the stack for as long as possible
     tasks: SmallVec<[Arc<Task>; 64]>,
@@ -87,7 +87,7 @@ impl Executor {
     }
 }
 
-/// Give future to global executor to be polled and executed.
+/// Give a future to the global executor to be polled.
 pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
     Executor::spawn(future);
 }
