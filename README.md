@@ -55,7 +55,7 @@ fn main() -> () {
 }
 ```
 
-## Want to replace the global default Executor?
+## Want to replace the global executor?
 
 Write your own with this trait
 
