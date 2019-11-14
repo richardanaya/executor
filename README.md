@@ -55,6 +55,21 @@ fn main() -> () {
 }
 ```
 
+## Want to replace the global default Executor?
+
+Write your own with this trait
+
+```rust
+pub trait Executor {
+    fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>);
+    fn poll_tasks(&mut self);
+}
+```
+
+```rust
+set_global_executor(MY_EXECUTOR);
+```
+
 # License
 
 This project is licensed under either of
