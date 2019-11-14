@@ -1,10 +1,10 @@
-# 💀 Executor
+# 💀 executor
 
 <a href="https://docs.rs/executor"><img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square" alt="docs.rs docs" /></a>
 
 ```toml
 [dependencies]
-executor = "0.1"
+executor = "0.2"
 ```
 ## Features
 - [x] `#![no_std]` and minimally uses `alloc` (`Box` and `Arc`)
