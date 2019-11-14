@@ -37,7 +37,7 @@ struct Task {
 impl Woke for Task {
     fn wake_by_ref(_: &Arc<Self>) {
         // poll everything because future is done and may have created conditions for something to finish
-        globals::get::<Executor>().poll_tasks()
+        DEFAULT_EXECUTOR.lock().poll_tasks()
     }
 }
 
@@ -87,12 +87,17 @@ struct DefaultExecutor;
 impl GlobalExecutor for DefaultExecutor {
     // Add a task on the global executor
     fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>) {
-        globals::get::<Executor>().spawn(future)
+        DEFAULT_EXECUTOR.lock().spawn(future)
     }
 }
 
 
 lazy_static! {
+    static ref DEFAULT_EXECUTOR: Mutex<Box<Executor>> = {
+        let m = Executor::default();
+        Mutex::new(Box::new(m))
+    };
+
     static ref GLOBAL_EXECUTOR: Mutex<Box<dyn GlobalExecutor+Send+Sync>> = {
         let m = DefaultExecutor;
         Mutex::new(Box::new(m))
