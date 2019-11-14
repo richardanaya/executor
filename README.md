@@ -55,7 +55,7 @@ fn main() -> () {
 }
 ```
 
-## Want to replace the global default Executor?
+## Want to replace the global executor?
 
 Write your own with this trait
 
@@ -67,7 +67,7 @@ pub trait GlobalExecutor {
 ```
 
 ```rust
-set_global_executor(MY_EXECUTOR);
+executor::set_global_executor(MY_EXECUTOR);
 ```
 
 # License
