@@ -1,5 +1,6 @@
 #![no_std]
 extern crate alloc;
+use lazy_static::*;
 use {
     alloc::{boxed::Box, sync::Arc},
     core::{
@@ -13,15 +14,15 @@ use {
 
 use smallvec::*;
 
-/// Executor holds a list of tasks to be processed
-pub struct Executor {
+/// DefaultExecutor holds a list of tasks to be processed
+pub struct DefaultExecutor {
     /// Tasks as a smallvec to try to keep it in the stack for as long as possible
     tasks: SmallVec<[Arc<Task>; 64]>,
 }
 
-impl Default for Executor {
+impl Default for DefaultExecutor {
     fn default() -> Self {
-        Executor {
+        DefaultExecutor {
             tasks: SmallVec::new(),
         }
     }
@@ -36,35 +37,18 @@ struct Task {
 impl Woke for Task {
     fn wake_by_ref(_: &Arc<Self>) {
         // poll everything because future is done and may have created conditions for something to finish
-        Executor::run()
+        run()
     }
 }
 
-impl Executor {
+impl Executor for DefaultExecutor {
     // Add a task on the global executor
-    fn spawn(future: impl Future<Output = ()> + 'static + Send) {
-        let mut e = globals::get::<Executor>();
-        e.add_task(future);
-        e.poll_tasks();
+    fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>) {
+        self.add_task(future);
+        self.poll_tasks();
     }
 
     // Poll all tasks on global executor
-    fn run() {
-        let mut e = globals::get::<Executor>();
-        Executor::poll_tasks(&mut e);
-    }
-
-    /// Add task for a future to the list of tasks
-    fn add_task(&mut self, future: impl Future<Output = ()> + 'static + Send) {
-        // store our task
-        let task = Arc::new(Task {
-            future: Mutex::new(Box::pin(future)),
-        });
-        self.tasks.push(task);
-    }
-
-    /// For every current task, iterate through each one and poll them, if they are not done
-    /// add them to end of list. If they are done, remove them from list of tasks.
     fn poll_tasks(&mut self) {
         let count = self.tasks.len();
         for _ in 0..count {
@@ -87,7 +71,40 @@ impl Executor {
     }
 }
 
+impl DefaultExecutor {
+    /// Add task for a future to the list of tasks
+    fn add_task(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>) {
+        // store our task
+        let task = Arc::new(Task {
+            future: Mutex::new(Box::pin(future)),
+        });
+        self.tasks.push(task);
+    }
+}
+
+lazy_static! {
+    static ref GLOBAL_EXECUTOR: Mutex<Box<dyn Executor+Send+Sync>> = {
+        let m = DefaultExecutor::default();
+        Mutex::new(Box::new(m))
+    };
+}
+
 /// Give future to global executor to be polled and executed.
 pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
-    Executor::spawn(future);
+    GLOBAL_EXECUTOR.lock().spawn(Box::new(Box::pin(future)));
+}
+
+// Replace the default global executor with another
+pub fn set_global_executor(executor:impl Executor+Send+Sync+'static) {
+    let mut global_executor = GLOBAL_EXECUTOR.lock();
+    *global_executor = Box::new(executor);
+}
+
+fn run() {
+    GLOBAL_EXECUTOR.lock().poll_tasks()
+}
+
+pub trait Executor {
+    fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>);
+    fn poll_tasks(&mut self);
 }
