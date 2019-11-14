@@ -2,7 +2,7 @@
 extern crate alloc;
 use lazy_static::*;
 use {
-    alloc::{boxed::Box, sync::Arc},
+    alloc::{boxed::Box, sync::Arc, vec::Vec},
     core::{
         future::Future,
         pin::Pin,
@@ -12,18 +12,16 @@ use {
     woke::{waker_ref, Woke},
 };
 
-use smallvec::*;
-
 /// Executor holds a list of tasks to be processed
 pub struct Executor {
     /// Tasks as a smallvec to try to keep it in the stack for as long as possible
-    tasks: SmallVec<[Arc<Task>; 64]>,
+    tasks: Vec<Arc<Task>>,
 }
 
 impl Default for Executor {
     fn default() -> Self {
         Executor {
-            tasks: SmallVec::new(),
+            tasks: Vec::new(),
         }
     }
 }
