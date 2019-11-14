@@ -67,7 +67,7 @@ pub trait Executor {
 ```
 
 ```rust
-set_global_executor(MY_EXECUTOR);
+executor::set_global_executor(MY_EXECUTOR);
 ```
 
 # License
