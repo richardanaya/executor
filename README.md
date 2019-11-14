@@ -52,15 +52,15 @@ fn main() {
 }
 
 fn block_on(f:impl std::future::Future+Sync+Send+'static){
-    let complete = std::sync::Arc::new(std::sync::Mutex::new(core::sync::atomic::AtomicBool::new(false)));
+    let complete = std::sync::Arc::new(core::sync::atomic::AtomicBool::new(false));
     let ender = complete.clone();
     thread::spawn(||{
         executor::spawn(async move {
             f.await;
-            ender.lock().unwrap().store(true, core::sync::atomic::Ordering::Release);
+            ender.store(true, core::sync::atomic::Ordering::Release);
         });
     });
-    while !complete.lock().unwrap().load(core::sync::atomic::Ordering::Acquire) {}
+    while !complete.load(core::sync::atomic::Ordering::Acquire) {}
 }
 ```
 
