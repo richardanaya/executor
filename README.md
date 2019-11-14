@@ -4,7 +4,7 @@
 
 ```toml
 [dependencies]
-executor = "0.2"
+executor = "0.3"
 ```
 ## Features
 - [x] `#![no_std]` and minimally uses `alloc` (`Box` and `Arc`)
