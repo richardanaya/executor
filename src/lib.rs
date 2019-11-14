@@ -14,15 +14,15 @@ use {
 
 use smallvec::*;
 
-/// DefaultExecutor holds a list of tasks to be processed
-pub struct DefaultExecutor {
+/// Executor holds a list of tasks to be processed
+pub struct Executor {
     /// Tasks as a smallvec to try to keep it in the stack for as long as possible
     tasks: SmallVec<[Arc<Task>; 64]>,
 }
 
-impl Default for DefaultExecutor {
+impl Default for Executor {
     fn default() -> Self {
-        DefaultExecutor {
+        Executor {
             tasks: SmallVec::new(),
         }
     }
@@ -41,7 +41,7 @@ impl Woke for Task {
     }
 }
 
-impl Executor for DefaultExecutor {
+impl GlobalExecutor for Executor {
     // Add a task on the global executor
     fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>) {
         self.add_task(future);
@@ -71,7 +71,7 @@ impl Executor for DefaultExecutor {
     }
 }
 
-impl DefaultExecutor {
+impl Executor {
     /// Add task for a future to the list of tasks
     fn add_task(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>) {
         // store our task
@@ -83,8 +83,8 @@ impl DefaultExecutor {
 }
 
 lazy_static! {
-    static ref GLOBAL_EXECUTOR: Mutex<Box<dyn Executor+Send+Sync>> = {
-        let m = DefaultExecutor::default();
+    static ref GLOBAL_EXECUTOR: Mutex<Box<dyn GlobalExecutor+Send+Sync>> = {
+        let m = Executor::default();
         Mutex::new(Box::new(m))
     };
 }
@@ -95,7 +95,7 @@ pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
 }
 
 // Replace the default global executor with another
-pub fn set_global_executor(executor:impl Executor+Send+Sync+'static) {
+pub fn set_global_executor(executor:impl GlobalExecutor+Send+Sync+'static) {
     let mut global_executor = GLOBAL_EXECUTOR.lock();
     *global_executor = Box::new(executor);
 }
@@ -104,7 +104,7 @@ fn run() {
     GLOBAL_EXECUTOR.lock().poll_tasks()
 }
 
-pub trait Executor {
+pub trait GlobalExecutor {
     fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>);
     fn poll_tasks(&mut self);
 }
