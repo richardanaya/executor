@@ -4,7 +4,7 @@
 
 ```toml
 [dependencies]
-executor = "0.4"
+executor = "0.5"
 ```
 ## Features
 - [x] `#![no_std]` and minimally uses `alloc` (`Box` and `Arc`)
@@ -62,7 +62,6 @@ Write your own with this trait
 ```rust
 pub trait GlobalExecutor {
     fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>);
-    fn poll_tasks(&mut self);
 }
 ```
 
