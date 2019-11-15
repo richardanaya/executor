@@ -14,7 +14,6 @@ use {
 
 /// Executor holds a list of tasks to be processed
 pub struct Executor {
-    /// Tasks as a smallvec to try to keep it in the stack for as long as possible
     tasks: Vec<Arc<Task>>,
 }
 
