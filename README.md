@@ -8,7 +8,7 @@ executor = "0.5"
 ```
 ## Features
 - [x] `#![no_std]` + `alloc`
-- [x] handle more than one spawn to parallelize work
+- [x] global executor for easy spawning
 - [x] simple enough to learn from! (~ 100 lines)
 
 ## Example
