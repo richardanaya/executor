@@ -2,7 +2,7 @@
 extern crate alloc;
 use lazy_static::*;
 use {
-    alloc::{boxed::Box, sync::Arc, vec::Vec},
+    alloc::{boxed::Box, sync::Arc, collections::vec_deque::VecDeque},
     core::{
         future::Future,
         pin::Pin,
@@ -14,13 +14,13 @@ use {
 
 /// Executor holds a list of tasks to be processed
 pub struct Executor {
-    tasks: Vec<Arc<Task>>,
+    tasks: VecDeque<Arc<Task>>,
 }
 
 impl Default for Executor {
     fn default() -> Self {
         Executor {
-            tasks: Vec::new(),
+            tasks: VecDeque::new(),
         }
     }
 }
@@ -53,14 +53,14 @@ impl Executor {
         let task = Arc::new(Task {
             future: Mutex::new(Box::pin(future)),
         });
-        self.tasks.push(task);
+        self.tasks.push_back(task);
     }
 
     // Poll all tasks on global executor
     fn poll_tasks(&mut self) {
         let count = self.tasks.len();
         for _ in 0..count {
-            let task = self.tasks.remove(0);
+            let task = self.tasks.remove(0).unwrap();
             let mut is_pending = false;
             {
                 let mut future = task.future.lock();
@@ -73,7 +73,7 @@ impl Executor {
                 }
             }
             if is_pending {
-                self.tasks.push(task);
+                self.tasks.push_back(task);
             }
         }
     }
