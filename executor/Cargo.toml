@@ -7,7 +7,7 @@ description = "A minimalistic async/await executor"
 license = "MIT OR Apache-2.0"
 categories = ["wasm", "no-std"]
 repository = "https://www.github.com/richardanaya/executor"
-readme = "README.md"
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
