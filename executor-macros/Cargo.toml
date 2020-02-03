@@ -3,6 +3,8 @@ name = "executor-macros"
 version = "0.0.1"
 authors = ["Richard Anaya"]
 edition = "2018"
+description = "Macros for executor"
+license = "MIT OR Apache-2.0"
 
 [lib]
 proc-macro = true
