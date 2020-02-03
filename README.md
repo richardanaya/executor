@@ -10,26 +10,26 @@ executor = "0.5"
 - [x] `#![no_std]` + `alloc`
 - [x] global executor for easy spawning
 - [x] simple enough to learn from! (~ 100 lines)
+- [x] simple macros for async entry functions
 
 ## Example
 
 A web assembly example
 
 ```rust
-[no_mangle]
-pub fn main() -> () {
-    executor::spawn(async {
-        console_log("Hello");
-        set_timeout(1000).await;
-        console_log("World!");
-    });
+#[no_mangle]
+#[executor::entry]
+pub fn main() {
+    console_log("Hello");
+    set_timeout(1000).await;
+    console_log("World!");
 }
 
 fn set_timeout(milliseconds:u32) -> TimeoutFuture {
    // create a timeout future and store globally
 }
 
-[no_mangle]
+#[no_mangle]
 pub fn timeout_complete() -> () {
     // find your timeout future and wake it's waker
 }
@@ -40,27 +40,14 @@ pub fn timeout_complete() -> () {
 Want to use [async-std](https://async.rs/)?
 
 ```rust
-use std::thread;
+use async_std::task::sleep;
 use std::time::Duration;
 
-fn main() {
-    block_on(async {
-        println!("hello");
-        async_std::task::sleep(Duration::from_secs(1)).await;
-        println!("world!");
-    })
-}
-
-fn block_on(f:impl std::future::Future+Sync+Send+'static){
-    let complete = std::sync::Arc::new(core::sync::atomic::AtomicBool::new(false));
-    let ender = complete.clone();
-    thread::spawn(||{
-        executor::spawn(async move {
-            f.await;
-            ender.store(true, core::sync::atomic::Ordering::Release);
-        });
-    });
-    while !complete.load(core::sync::atomic::Ordering::Acquire) {}
+#[executor::main]
+async fn main() {
+    println!("hello");
+    sleep(Duration::from_secs(1)).await;
+    println!("world!");
 }
 ```
 

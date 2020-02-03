@@ -1,8 +1,9 @@
 #![no_std]
 extern crate alloc;
+pub use executor_macros::*;
 use lazy_static::*;
 use {
-    alloc::{boxed::Box, sync::Arc, collections::vec_deque::VecDeque},
+    alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::Arc},
     core::{
         future::Future,
         pin::Pin,
@@ -88,14 +89,12 @@ impl GlobalExecutor for DefaultExecutor {
     }
 }
 
-
 lazy_static! {
     static ref DEFAULT_EXECUTOR: Mutex<Box<Executor>> = {
         let m = Executor::default();
         Mutex::new(Box::new(m))
     };
-
-    static ref GLOBAL_EXECUTOR: Mutex<Box<dyn GlobalExecutor+Send+Sync>> = {
+    static ref GLOBAL_EXECUTOR: Mutex<Box<dyn GlobalExecutor + Send + Sync>> = {
         let m = DefaultExecutor;
         Mutex::new(Box::new(m))
     };
@@ -107,7 +106,7 @@ pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
 }
 
 // Replace the default global executor with another
-pub fn set_global_executor(executor:impl GlobalExecutor+Send+Sync+'static) {
+pub fn set_global_executor(executor: impl GlobalExecutor + Send + Sync + 'static) {
     let mut global_executor = GLOBAL_EXECUTOR.lock();
     *global_executor = Box::new(executor);
 }
