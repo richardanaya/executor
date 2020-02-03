@@ -4,7 +4,7 @@
 
 ```toml
 [dependencies]
-executor = "0.5"
+executor = "0.6"
 ```
 ## Features
 - [x] `#![no_std]` + `alloc`
