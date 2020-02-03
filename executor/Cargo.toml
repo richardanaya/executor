@@ -14,7 +14,7 @@ readme = "README.md"
 [dependencies]
 woke = "0.0.2"
 spin = "0.5.2"
-executor-macros = { path = "../executor-macros" }
+executor-macros = { version="0.0.1", path = "../executor-macros" }
 
 [dependencies.lazy_static]
 version = "1.4.0"
