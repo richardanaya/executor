@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 executor = {path="../../"}
-async-std = "0.99"
+async-std = "1"
 complete = "0.0.1"
 
 [profile.release]
