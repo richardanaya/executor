@@ -1,7 +1,8 @@
 #[allow(unused_extern_crates)]
 extern crate proc_macro;
+extern crate alloc;
 use proc_macro::{Delimiter, TokenStream, TokenTree};
-use std::str::FromStr;
+use alloc::str::FromStr;
 
 #[proc_macro_attribute]
 pub fn entry(_args: TokenStream, item: TokenStream) -> TokenStream {
