@@ -19,7 +19,7 @@ A web assembly example
 ```rust
 #[no_mangle]
 #[executor::entry]
-pub fn main() {
+pub async fn main() {
     console_log("Hello");
     set_timeout(1000).await;
     console_log("World!");
@@ -49,20 +49,6 @@ async fn main() {
     sleep(Duration::from_secs(1)).await;
     println!("world!");
 }
-```
-
-## Want to replace the global executor?
-
-Write your own with this trait
-
-```rust
-pub trait GlobalExecutor {
-    fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>);
-}
-```
-
-```rust
-executor::set_global_executor(MY_EXECUTOR);
 ```
 
 # License

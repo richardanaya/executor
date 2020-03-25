@@ -22,12 +22,6 @@ fn a() -> impl Future<Output = ()>{
 }
 
 #[executor::entry]
-async fn foo(t:i32) {
-    a(t).await;
-}
-
-
-#[executor::entry]
 async fn main() {
     a().await;
 }

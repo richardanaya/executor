@@ -2,10 +2,10 @@ use core::future::Future;
 
 use core::{
     pin::Pin,
-    task::{Context,Poll},
+    task::{Context, Poll},
 };
 
-struct Foo{}
+struct Foo {}
 
 impl Future for Foo {
     type Output = ();
@@ -15,12 +15,15 @@ impl Future for Foo {
     }
 }
 
-
-fn a() -> impl Future<Output = ()>{
+fn a() -> impl Future<Output = ()> {
     println!("hello world");
-    Foo{}
+    Foo {}
+}
+
+async fn blah() {
+    a().await;
 }
 
 fn main() -> () {
-    executor::spawn(a());
+    executor::block_on(blah());
 }

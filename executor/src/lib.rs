@@ -15,7 +15,11 @@ use {
 
 /// Executor holds a list of tasks to be processed
 pub struct Executor {
-    tasks: VecDeque<Arc<Task>>,
+    tasks: VecDeque<Box<dyn Pendable + core::marker::Send + core::marker::Sync>>,
+}
+
+trait Pendable {
+    fn is_pending(&self) -> bool;
 }
 
 impl Default for Executor {
@@ -27,34 +31,50 @@ impl Default for Executor {
 }
 
 /// Task is our unit of execution and holds a future are waiting on
-struct Task {
-    pub future: Mutex<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
+struct Task<T> {
+    pub future: Mutex<Pin<Box<dyn Future<Output = T> + Send + 'static>>>,
 }
 
 /// Implement what we would like to do when a task gets woken up
-impl Woke for Task {
+impl<T> Woke for Task<T> {
     fn wake_by_ref(_: &Arc<Self>) {
         // poll everything because future is done and may have created conditions for something to finish
         DEFAULT_EXECUTOR.lock().poll_tasks()
     }
 }
 
-impl GlobalExecutor for Executor {
-    // Add a task on the global executor
-    fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>) {
-        self.add_task(future);
-        self.poll_tasks();
+impl<T> Pendable for Arc<Task<T>> {
+    fn is_pending(&self) -> bool {
+        let mut future = self.future.lock();
+        // make a waker for our task
+        let waker = waker_ref(&self);
+        // poll our future and give it a waker
+        let context = &mut Context::from_waker(&*waker);
+        let check_pending = matches!(future.as_mut().poll(context), Poll::Pending);
+        check_pending
     }
 }
 
 impl Executor {
+    // Add a task on the global executor
+    fn block_on<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>)
+    where
+        T: Send + 'static,
+    {
+        self.add_task::<T>(future);
+        self.poll_tasks();
+    }
+
     /// Add task for a future to the list of tasks
-    fn add_task(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>) {
+    fn add_task<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>)
+    where
+        T: Send + 'static,
+    {
         // store our task
         let task = Arc::new(Task {
             future: Mutex::new(Box::pin(future)),
         });
-        self.tasks.push_back(task);
+        self.tasks.push_back(Box::new(task));
     }
 
     // Poll all tasks on global executor
@@ -64,12 +84,7 @@ impl Executor {
             let task = self.tasks.remove(0).unwrap();
             let mut is_pending = false;
             {
-                let mut future = task.future.lock();
-                // make a waker for our task
-                let waker = waker_ref(&task);
-                // poll our future and give it a waker
-                let context = &mut Context::from_waker(&*waker);
-                if let Poll::Pending = future.as_mut().poll(context) {
+                if task.is_pending() {
                     is_pending = true;
                 }
             }
@@ -80,37 +95,15 @@ impl Executor {
     }
 }
 
-struct DefaultExecutor;
-
-impl GlobalExecutor for DefaultExecutor {
-    // Add a task on the global executor
-    fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>) {
-        DEFAULT_EXECUTOR.lock().spawn(future)
-    }
-}
-
 lazy_static! {
     static ref DEFAULT_EXECUTOR: Mutex<Box<Executor>> = {
         let m = Executor::default();
         Mutex::new(Box::new(m))
     };
-    static ref GLOBAL_EXECUTOR: Mutex<Box<dyn GlobalExecutor + Send + Sync>> = {
-        let m = DefaultExecutor;
-        Mutex::new(Box::new(m))
-    };
 }
 
 /// Give future to global executor to be polled and executed.
-pub fn spawn(future: impl Future<Output = ()> + 'static + Send) {
-    GLOBAL_EXECUTOR.lock().spawn(Box::new(Box::pin(future)));
-}
-
-// Replace the default global executor with another
-pub fn set_global_executor(executor: impl GlobalExecutor + Send + Sync + 'static) {
-    let mut global_executor = GLOBAL_EXECUTOR.lock();
-    *global_executor = Box::new(executor);
-}
-
-pub trait GlobalExecutor {
-    fn spawn(&mut self, future: Box<dyn Future<Output = ()> + 'static + Send + Unpin>);
+pub fn block_on<T>(future: impl Future<Output = T> + 'static + Send) where
+T: Send + 'static,{
+    DEFAULT_EXECUTOR.lock().block_on(Box::new(Box::pin(future)));
 }

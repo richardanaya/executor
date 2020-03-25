@@ -46,7 +46,7 @@ pub fn entry(_args: TokenStream, item: TokenStream) -> TokenStream {
     };
     let func = &format!(
         "fn {}({}) {{
-        executor::spawn(async move{{ 
+        executor::block_on(async move{{ 
             {}   
        }})
     }}",
@@ -103,7 +103,7 @@ pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
         let complete = std::sync::Arc::new(core::sync::atomic::AtomicBool::new(false));
         let ender = complete.clone();
         std::thread::spawn(||{{
-            executor::spawn(async move {{
+            executor::block_on(async move {{
                 (async {{
                     {}
                 }}).await;
