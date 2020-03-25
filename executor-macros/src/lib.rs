@@ -1,19 +1,33 @@
+extern crate alloc;
 #[allow(unused_extern_crates)]
 extern crate proc_macro;
-extern crate alloc;
-use proc_macro::{Delimiter, TokenStream, TokenTree};
 use alloc::str::FromStr;
+use proc_macro::{Delimiter, TokenStream, TokenTree};
 
 #[proc_macro_attribute]
 pub fn entry(_args: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = item.into_iter().peekable();
+    let mut saw_pub = false;
     if let Some(TokenTree::Ident(t)) = input.next() {
-        if t.to_string() != "async" {
+        if t.to_string() == "pub" {
+            saw_pub = true;
+        } else if t.to_string() != "async" {
             panic!("Expected \"async\"")
         }
     } else {
         panic!("Expected \"async\"")
     }
+
+    if saw_pub {
+        if let Some(TokenTree::Ident(t)) = input.next() {
+            if t.to_string() != "async" {
+                panic!("Expected \"async\"")
+            }
+        } else {
+            panic!("Expected \"async\"")
+        }
+    }
+
     if let Some(TokenTree::Ident(t)) = input.next() {
         if t.to_string() != "fn" {
             panic!("Expected \"fn\"")
@@ -58,12 +72,25 @@ pub fn entry(_args: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = item.into_iter().peekable();
+    let mut saw_pub = false;
     if let Some(TokenTree::Ident(t)) = input.next() {
-        if t.to_string() != "async" {
-            panic!("Expected \"async\"")
+        if t.to_string() == "pub" {
+            saw_pub = true;
+        } else if t.to_string() != "async" {
+            panic!("Expected \"pub\" or \"async\"")
         }
     } else {
         panic!("Expected \"async\"")
+    }
+
+    if saw_pub {
+        if let Some(TokenTree::Ident(t)) = input.next() {
+            if t.to_string() != "async" {
+                panic!("Expected \"async\"")
+            }
+        } else {
+            panic!("Expected \"async\"")
+        }
     }
     if let Some(TokenTree::Ident(t)) = input.next() {
         if t.to_string() != "fn" {
