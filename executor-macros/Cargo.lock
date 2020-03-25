@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "executor-macros"
-version = "0.0.2"
+version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
