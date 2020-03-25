@@ -31,8 +31,8 @@ async fn main() {
 }
 ```
 
-## Non-blocking example
-Web assembly needs async entrypoints that don't block.
+## Web assembly
+**Web assembly needs async entrypoints that don't block so it does not halt the browser.**
 
 ```rust
 #[no_mangle]
