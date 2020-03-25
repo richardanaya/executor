@@ -20,10 +20,8 @@ fn a() -> impl Future<Output = ()> {
     Foo {}
 }
 
-async fn blah() {
-    a().await;
-}
-
 fn main() -> () {
-    executor::block_on(blah());
+    executor::block_on(async {
+        a().await;
+    });
 }
