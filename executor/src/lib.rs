@@ -56,7 +56,7 @@ impl<T> Pendable for Arc<Task<T>> {
 }
 
 impl Executor {
-    // Add a task on the global executor
+    // Block on task
     fn block_on<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>) -> T
     where
         T: Send + 'static,
@@ -77,8 +77,17 @@ impl Executor {
         }
     }
 
+    // Run async task but don't block
+    pub fn run<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>)
+    where
+        T: Send + 'static,
+    {
+        self.add_task(future);
+        self.poll_tasks();
+    }
+
     /// Add task for a future to the list of tasks
-    /*fn add_task<T>(
+    fn add_task<T>(
         &mut self,
         future: Box<dyn Future<Output = T> + 'static + Send + Unpin>,
     ) -> Arc<Task<T>>
@@ -91,7 +100,7 @@ impl Executor {
         });
         self.tasks.push_back(Box::new(task.clone()));
         task
-    }*/
+    }
 
     // Poll all tasks on global executor
     fn poll_tasks(&mut self) {
@@ -124,4 +133,11 @@ where
     T: Send + 'static,
 {
     DEFAULT_EXECUTOR.lock().block_on(Box::new(Box::pin(future)))
+}
+
+pub fn run<T>(future: impl Future<Output = T> + 'static + Send)
+where
+    T: Send + 'static,
+{
+    DEFAULT_EXECUTOR.lock().run(Box::new(Box::pin(future)))
 }
