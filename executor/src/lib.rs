@@ -57,16 +57,31 @@ impl<T> Pendable for Arc<Task<T>> {
 
 impl Executor {
     // Add a task on the global executor
-    fn block_on<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>)
+    fn block_on<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>) -> T
     where
         T: Send + 'static,
     {
-        self.add_task::<T>(future);
-        self.poll_tasks();
+        let task = Arc::new(Task {
+            future: Mutex::new(Box::pin(future)),
+        });
+        loop {
+            let mut future = task.future.lock();
+            // make a waker for our task
+            let waker = waker_ref(&task);
+            // poll our future and give it a waker
+            let context = &mut Context::from_waker(&*waker);
+            let result = future.as_mut().poll(context);
+            if let Poll::Ready(val) = result {
+                return val;
+            }
+        }
     }
 
     /// Add task for a future to the list of tasks
-    fn add_task<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>)
+    /*fn add_task<T>(
+        &mut self,
+        future: Box<dyn Future<Output = T> + 'static + Send + Unpin>,
+    ) -> Arc<Task<T>>
     where
         T: Send + 'static,
     {
@@ -74,8 +89,9 @@ impl Executor {
         let task = Arc::new(Task {
             future: Mutex::new(Box::pin(future)),
         });
-        self.tasks.push_back(Box::new(task));
-    }
+        self.tasks.push_back(Box::new(task.clone()));
+        task
+    }*/
 
     // Poll all tasks on global executor
     fn poll_tasks(&mut self) {
@@ -103,7 +119,9 @@ lazy_static! {
 }
 
 /// Give future to global executor to be polled and executed.
-pub fn block_on<T>(future: impl Future<Output = T> + 'static + Send) where
-T: Send + 'static,{
-    DEFAULT_EXECUTOR.lock().block_on(Box::new(Box::pin(future)));
+pub fn block_on<T>(future: impl Future<Output = T> + 'static + Send) -> T
+where
+    T: Send + 'static,
+{
+    DEFAULT_EXECUTOR.lock().block_on(Box::new(Box::pin(future)))
 }

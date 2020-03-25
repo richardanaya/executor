@@ -2,10 +2,10 @@ use core::future::Future;
 
 use core::{
     pin::Pin,
-    task::{Context,Poll},
+    task::{Context, Poll},
 };
 
-struct Foo{}
+struct Foo {}
 
 impl Future for Foo {
     type Output = ();
@@ -15,13 +15,23 @@ impl Future for Foo {
     }
 }
 
+fn a() -> impl Future<Output = ()> {
+    println!("a");
+    Foo {}
+}
 
-fn a() -> impl Future<Output = ()>{
-    println!("hello world");
-    Foo{}
+async fn b() {
+    println!("b");
+    a().await;
+}
+
+async fn c() {
+    println!("c");
+    b().await;
+    b().await;
 }
 
 #[executor::entry]
 pub async fn main() {
-    a().await;
+    c().await;
 }
