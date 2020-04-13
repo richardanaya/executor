@@ -14,7 +14,25 @@ executor = "0.7"
 
 ## Example
 
-A web assembly example
+```rust
+fn main() {
+    executor::block_on(async {
+        console_log("Hello world");
+    })
+}
+```
+
+or using the helper macro
+
+```rust
+#[executor::main]
+async fn main() {
+    console_log("Hello world");
+}
+```
+
+## Web assembly
+**Web assembly needs async entrypoints that don't block so it does not halt the browser.**
 
 ```rust
 #[no_mangle]
