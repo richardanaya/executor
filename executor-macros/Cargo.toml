@@ -1,6 +1,6 @@
 [package]
 name = "executor-macros"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Richard Anaya"]
 edition = "2018"
 description = "Macros for executor"

@@ -126,7 +126,7 @@ pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
         panic!("Expected function content")
     };
     let func = &format!(
-        "fn main({}) {{
+        "fn main({}) -> Result<(), Box<dyn std::error::Error>> {{
         let complete = std::sync::Arc::new(core::sync::atomic::AtomicBool::new(false));
         let ender = complete.clone();
         std::thread::spawn(||{{
@@ -138,6 +138,7 @@ pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
             }});
         }});
         while !complete.load(core::sync::atomic::Ordering::Acquire) {{}}
+        Ok(())
     }}",
         func_params, function_content
     );
