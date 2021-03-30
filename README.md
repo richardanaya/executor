@@ -9,7 +9,7 @@ executor = "0.8"
 ## Features
 - [x] `#![no_std]` + `alloc`
 - [x] simple enough to learn from! (~ 100 lines)
-- [x] Works with WebAssembly
+- [x] works with WebAssembly
 
 ## WebAssembly
 
