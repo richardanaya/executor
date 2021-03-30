@@ -15,23 +15,14 @@ impl Future for Foo {
     }
 }
 
-fn a() -> impl Future<Output = ()> {
-    println!("a");
-    Foo {}
+async fn a() {
+    println!("hello world");
+    Foo {}.await;
+    println!("goodbye world");
 }
 
-async fn b() {
-    println!("b");
-    a().await;
-}
-
-async fn c() {
-    println!("c");
-    b().await;
-    b().await;
-}
-
-#[executor::entry]
-pub async fn main() {
-    c().await;
+fn main() -> () {
+    executor::run(async {
+        a().await;
+    });
 }

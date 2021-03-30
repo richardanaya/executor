@@ -1,6 +1,6 @@
 [package]
 name = "executor"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Richard Anaya"]
 edition = "2018"
 description = "A minimalistic async/await executor"
@@ -14,8 +14,10 @@ readme = "../README.md"
 [dependencies]
 woke = "0.0.2"
 spin = "0.5.2"
-executor-macros = { version="0.1", path = "../executor-macros" }
 
 [dependencies.lazy_static]
 version = "1.4.0"
 features = ["spin_no_std"]
+
+[dev-dependencies]
+async-std = "1"

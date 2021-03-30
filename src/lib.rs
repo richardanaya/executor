@@ -1,6 +1,5 @@
 #![no_std]
 extern crate alloc;
-pub use executor_macros::*;
 use lazy_static::*;
 use {
     alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::Arc},
@@ -13,7 +12,6 @@ use {
     woke::{waker_ref, Woke},
 };
 
-/// Executor holds a list of tasks to be processed
 pub struct Executor {
     tasks: VecDeque<Box<dyn Pendable + core::marker::Send + core::marker::Sync>>,
 }
@@ -50,34 +48,12 @@ impl<T> Pendable for Arc<Task<T>> {
         let waker = waker_ref(&self);
         // poll our future and give it a waker
         let context = &mut Context::from_waker(&*waker);
-        let check_pending = matches!(future.as_mut().poll(context), Poll::Pending);
-        check_pending
+        matches!(future.as_mut().poll(context), Poll::Pending)
     }
 }
 
 impl Executor {
-    // Block on task
-    fn block_on<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>) -> T
-    where
-        T: Send + 'static,
-    {
-        let task = Arc::new(Task {
-            future: Mutex::new(Box::pin(future)),
-        });
-        loop {
-            let mut future = task.future.lock();
-            // make a waker for our task
-            let waker = waker_ref(&task);
-            // poll our future and give it a waker
-            let context = &mut Context::from_waker(&*waker);
-            let result = future.as_mut().poll(context);
-            if let Poll::Ready(val) = result {
-                return val;
-            }
-        }
-    }
-
-    // Run async task but don't block
+    // Run async task
     pub fn run<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>)
     where
         T: Send + 'static,
@@ -104,16 +80,9 @@ impl Executor {
 
     // Poll all tasks on global executor
     fn poll_tasks(&mut self) {
-        let count = self.tasks.len();
-        for _ in 0..count {
+        for _ in 0..self.tasks.len() {
             let task = self.tasks.remove(0).unwrap();
-            let mut is_pending = false;
-            {
-                if task.is_pending() {
-                    is_pending = true;
-                }
-            }
-            if is_pending {
+            if task.is_pending() {
                 self.tasks.push_back(task);
             }
         }
@@ -121,18 +90,7 @@ impl Executor {
 }
 
 lazy_static! {
-    static ref DEFAULT_EXECUTOR: Mutex<Box<Executor>> = {
-        let m = Executor::default();
-        Mutex::new(Box::new(m))
-    };
-}
-
-/// Give future to global executor to be polled and executed.
-pub fn block_on<T>(future: impl Future<Output = T> + 'static + Send) -> T
-where
-    T: Send + 'static,
-{
-    DEFAULT_EXECUTOR.lock().block_on(Box::new(Box::pin(future)))
+    static ref DEFAULT_EXECUTOR: Mutex<Box<Executor>> = Mutex::new(Box::new(Executor::default()));
 }
 
 pub fn run<T>(future: impl Future<Output = T> + 'static + Send)
