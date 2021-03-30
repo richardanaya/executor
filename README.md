@@ -17,7 +17,7 @@ executor = "0.8"
 use web::{log, sleep};
 
 async fn main() {
-    executor::run(async move {
+    executor::run(async {
         log("hello");
         sleep(1000).await;
         log("world");
