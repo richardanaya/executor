@@ -36,6 +36,7 @@ struct Task<T> {
 /// Implement what we would like to do when a task gets woken up
 impl<T> Woke for Task<T> {
     fn wake_by_ref(_: &Arc<Self>) {
+        // we check if there's a lock because some immediate executing futures screw this up
         if let Some(mut e) = DEFAULT_EXECUTOR.try_lock() {
             // poll everything because future is done and may have created conditions for something to finish
             e.poll_tasks()
