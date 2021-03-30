@@ -4,21 +4,22 @@
 
 ```toml
 [dependencies]
-executor = "0.7"
+executor = "0.8"
 ```
 ## Features
 - [x] `#![no_std]` + `alloc`
 - [x] simple enough to learn from! (~ 100 lines)
+- [x] Works with WebAssembly
 
 ## WebAssembly
 
 ```rust
-use web::{log, set_timeout_async};
+use web::{log, sleep};
 
 async fn main() {
     executor::run(async move {
         log("hello");
-        set_timeout_async(1000).await;
+        sleep(1000).await;
         log("world");
     });
 }
