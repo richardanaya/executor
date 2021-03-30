@@ -29,6 +29,8 @@ fn main() {
 }
 ```
 
+See this working [here](https://richardanaya.github.io/executor/examples/timer/).
+
 ## CLI
 
 Even `async-std` can be used if you add something to stop it from exiting too early.
