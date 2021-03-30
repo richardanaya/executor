@@ -14,13 +14,17 @@ executor = "0.8"
 ## WebAssembly
 
 ```rust
-use web::{log, sleep};
+use web::*;
 
-async fn main() {
+#[no_mangle]
+fn main() {
     executor::run(async {
-        log("hello");
-        sleep(1000).await;
-        log("world");
+        loop {
+            set_inner_html(DOM_BODY, "⏰ tic");
+            sleep(1000).await;
+            set_inner_html(DOM_BODY, "⏰ tock");
+            sleep(1000).await;
+        }
     });
 }
 ```
