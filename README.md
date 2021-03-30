@@ -10,17 +10,7 @@ executor = "0.7"
 - [x] `#![no_std]` + `alloc`
 - [x] simple enough to learn from! (~ 100 lines)
 
-## Example
-
-```rust
-fn main() {
-    executor::block_on(async {
-        console_log("Hello world");
-    })
-}
-```
-
-## Web assembly
+## WebAssembly
 
 ```rust
 use web::{log, set_timeout_async};
@@ -34,7 +24,7 @@ async fn main() {
 }
 ```
 
-## Async-Std
+## CLI
 
 Even `async-std` can be used if you add something to stop it from exiting too early.
 
