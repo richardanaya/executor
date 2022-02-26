@@ -69,7 +69,7 @@ impl Executor {
     fn add_task<T>(
         &mut self,
         future: Pin<Box<dyn Future<Output = T> + 'static + Send>>,
-    ) -> Arc<Task<T>>
+    )
     where
         T: Send + 'static,
     {
@@ -77,8 +77,7 @@ impl Executor {
         let task = Arc::new(Task {
             future: Mutex::new(future),
         });
-        self.tasks.push_back(Box::new(task.clone()));
-        task
+        self.tasks.push_back(Box::new(task));
     }
 
     // Poll all tasks on global executor
