@@ -57,7 +57,7 @@ impl<T> Pendable for Arc<Task<T>> {
 
 impl Executor {
     // Run async task
-    pub fn run<T>(&mut self, future: Box<dyn Future<Output = T> + 'static + Send + Unpin>)
+    pub fn run<T>(&mut self, future: Pin<Box<dyn Future<Output = T> + 'static + Send>>)
     where
         T: Send + 'static,
     {
@@ -68,14 +68,14 @@ impl Executor {
     /// Add task for a future to the list of tasks
     fn add_task<T>(
         &mut self,
-        future: Box<dyn Future<Output = T> + 'static + Send + Unpin>,
+        future: Pin<Box<dyn Future<Output = T> + 'static + Send>>,
     ) -> Arc<Task<T>>
     where
         T: Send + 'static,
     {
         // store our task
         let task = Arc::new(Task {
-            future: Mutex::new(Box::pin(future)),
+            future: Mutex::new(future),
         });
         self.tasks.push_back(Box::new(task.clone()));
         task
@@ -100,5 +100,5 @@ pub fn run<T>(future: impl Future<Output = T> + 'static + Send)
 where
     T: Send + 'static,
 {
-    DEFAULT_EXECUTOR.lock().run(Box::new(Box::pin(future)))
+    DEFAULT_EXECUTOR.lock().run(Box::pin(future))
 }
