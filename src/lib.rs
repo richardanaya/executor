@@ -93,7 +93,7 @@ impl Executor {
 }
 
 lazy_static! {
-    static ref DEFAULT_EXECUTOR: Mutex<Box<Executor>> = Mutex::new(Box::new(Executor::default()));
+    static ref DEFAULT_EXECUTOR: Mutex<Executor> = Mutex::new(Executor::default());
 }
 
 pub fn run<T>(future: impl Future<Output = T> + 'static + Send)
