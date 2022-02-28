@@ -83,7 +83,7 @@ impl Executor {
     // Poll all tasks on global executor
     fn poll_tasks(&mut self) {
         for _ in 0..self.tasks.len() {
-            let task = self.tasks.remove(0).unwrap();
+            let task = self.tasks.pop_front().unwrap();
             if task.is_pending() {
                 self.tasks.push_back(task);
             }
