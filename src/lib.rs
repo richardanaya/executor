@@ -1,6 +1,5 @@
 #![no_std]
 extern crate alloc;
-use lazy_static::*;
 use {
     alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::Arc},
     core::{
@@ -12,20 +11,14 @@ use {
     woke::{waker_ref, Woke},
 };
 
+type TasksList = VecDeque<Box<dyn Pendable + core::marker::Send + core::marker::Sync>>;
+
 pub struct Executor {
-    tasks: VecDeque<Box<dyn Pendable + core::marker::Send + core::marker::Sync>>,
+    tasks: Option<TasksList>,
 }
 
 trait Pendable {
     fn is_pending(&self) -> bool;
-}
-
-impl Default for Executor {
-    fn default() -> Self {
-        Executor {
-            tasks: VecDeque::new(),
-        }
-    }
 }
 
 /// Task is our unit of execution and holds a future are waiting on
@@ -48,7 +41,7 @@ impl<T> Pendable for Arc<Task<T>> {
     fn is_pending(&self) -> bool {
         let mut future = self.future.lock();
         // make a waker for our task
-        let waker = waker_ref(&self);
+        let waker = waker_ref(self);
         // poll our future and give it a waker
         let context = &mut Context::from_waker(&*waker);
         matches!(future.as_mut().poll(context), Poll::Pending)
@@ -66,10 +59,7 @@ impl Executor {
     }
 
     /// Add task for a future to the list of tasks
-    fn add_task<T>(
-        &mut self,
-        future: Pin<Box<dyn Future<Output = T> + 'static + Send>>,
-    )
+    fn add_task<T>(&mut self, future: Pin<Box<dyn Future<Output = T> + 'static + Send>>)
     where
         T: Send + 'static,
     {
@@ -77,23 +67,29 @@ impl Executor {
         let task = Arc::new(Task {
             future: Mutex::new(future),
         });
-        self.tasks.push_back(Box::new(task));
+        if self.tasks.is_none() {
+            self.tasks = Some(TasksList::new());
+        }
+        let tasks: &mut TasksList = self.tasks.as_mut().expect("tasks not initialized");
+        tasks.push_back(Box::new(task));
     }
 
     // Poll all tasks on global executor
     fn poll_tasks(&mut self) {
-        for _ in 0..self.tasks.len() {
-            let task = self.tasks.pop_front().unwrap();
+        if self.tasks.is_none() {
+            self.tasks = Some(TasksList::new());
+        }
+        let tasks: &mut TasksList = self.tasks.as_mut().expect("tasks not initialized");
+        for _ in 0..tasks.len() {
+            let task = tasks.pop_front().unwrap();
             if task.is_pending() {
-                self.tasks.push_back(task);
+                tasks.push_back(task);
             }
         }
     }
 }
 
-lazy_static! {
-    static ref DEFAULT_EXECUTOR: Mutex<Executor> = Mutex::new(Executor::default());
-}
+static DEFAULT_EXECUTOR: Mutex<Executor> = Mutex::new(Executor { tasks: None });
 
 pub fn run<T>(future: impl Future<Output = T> + 'static + Send)
 where

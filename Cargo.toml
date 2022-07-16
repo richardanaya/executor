@@ -1,23 +1,20 @@
 [package]
 name = "executor"
-version = "0.8.2"
+version = "0.8.3"
 authors = ["Richard Anaya"]
-edition = "2018"
+edition = "2021"
 description = "A minimalistic async/await executor"
 license = "MIT OR Apache-2.0"
 categories = ["wasm", "no-std"]
 repository = "https://www.github.com/richardanaya/executor"
 readme = "README.md"
+rust-version="1.63"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-woke = "0.0.2"
+woke = "0.0.3"
 spin = "0.5.2"
-
-[dependencies.lazy_static]
-version = "1.4.0"
-features = ["spin_no_std"]
 
 [dev-dependencies]
 async-std = "1"
