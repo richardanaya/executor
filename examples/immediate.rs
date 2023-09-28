@@ -19,8 +19,9 @@ impl std::future::Future for ImmediatelyWakingFuture {
 }
 
 fn main() -> () {
-    executor::run(async {
+    executor::add_async(async {
         ImmediatelyWakingFuture { first_call: false }.await;
         println!("hello")
     });
+    executor::run();
 }

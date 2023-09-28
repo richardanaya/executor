@@ -22,7 +22,8 @@ async fn a() {
 }
 
 fn main() -> () {
-    executor::run(async {
+    executor::add_async(async {
         a().await;
     });
+    executor::run();
 }
