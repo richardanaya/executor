@@ -1,2 +1,5 @@
+Cargo.lock
+examples/timer/Cargo.lock
 target
 **/*.rs.bk
+
