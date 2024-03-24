@@ -1,11 +1,10 @@
 #![no_std]
 
-use core::sync::atomic::AtomicBool;
+use core::{future, sync::atomic::AtomicBool};
 extern crate alloc;
 use {
     alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::Arc},
     core::{
-        future::Future,
         pin::Pin,
         sync::atomic::Ordering,
         task::{Context, Poll},
@@ -15,11 +14,17 @@ use {
 };
 
 type TasksList = VecDeque<Box<dyn Pendable + core::marker::Send + core::marker::Sync>>;
+type Future<T> = Pin<Box<dyn future::Future<Output = T> + Send + 'static>>;
 
 /// Executor struct type
 struct Executor {
-    /// Tasks conllection
+    /// Tasks collection. Use [`update()`] functon for polling all tasks and continue them progress.
     tasks: TasksList,
+
+    /// Woken Tasks collection. Contain woken tasks from [`Executor::tasks`].
+    /// [`update()`] function aslo can continue progress of this tasks,
+    /// but [`update_woken()`] function will be preferred, because poll only tasks, that was awakened.
+    woken_tasks: &'static Mutex<TasksList>,
 }
 
 /// [`Task<T>`] interface for executor
@@ -40,30 +45,43 @@ trait Pendable {
 ///
 /// Task is our unit of execution and holds a future are waiting on.
 struct Task<T> {
-    future: Mutex<Pin<Box<dyn Future<Output = T> + Send + 'static>>>,
+    /// Awaked tasks collection.
+    ///
+    /// Shall contain itself to this, when was awaked by ['wake() or wake_by_ref()'].
+    woken_tasks: &'static Mutex<TasksList>,
+    future: Mutex<Future<T>>,
+    /// Returns `true` if the state is corresponding to [`core::task::Poll::Ready`] otherwise - false.
+    ///
+    /// Needed to determine, which task we shall drop.
     done: AtomicBool,
 }
 
 // Implement what we would like to do when a task gets woken up.
-impl<T> Woke for Task<T> {
+impl<T: 'static> Woke for Task<T> {
     fn wake_by_ref(arc_self: &Arc<Self>) {
-        arc_self.update();
+        let woken = arc_self.clone();
+        // its tempting to call update() "in place", but dont do this for 2 reason:
+        // 1) for some reason, somethimes cant poll our future, exactly after big latency between update's(), for example, because of sleep() call.
+        // 2) if call wake() or wake_by_ref() at poll, being at woken_tasks, will produce dead lock state.
+        arc_self.woken_tasks.lock().push_back(Box::new(woken));
     }
 }
 
-impl<T> Pendable for Arc<Task<T>> {
+impl<T: 'static> Pendable for Arc<Task<T>> {
     fn update(&self) {
-        let mut future = self.future.lock();
-        let waker = waker_ref(self);
-        // Poll our future.
-        // If future is done, mark it via Task<T>::done field.
-        // We can't poll "done futures", so we mark "done futures" at Task<T>
-        // and drop it at next run() or gerbage_collect() call.
-        let context = &mut Context::from_waker(&waker);
-        self.done.store(
-            !matches!(future.as_mut().poll(context), Poll::Pending),
-            Ordering::Relaxed,
-        );
+        if !self.future.is_locked() {
+            let mut future = self.future.lock();
+            let waker = waker_ref(self);
+            // Poll our future.
+            // If future is done, mark it via Task<T>::done field.
+            // We can't poll "done futures", so we mark "done futures" at Task<T>
+            // and drop it at next run() call.
+            let context = &mut Context::from_waker(&waker);
+            self.done.store(
+                !matches!(future.as_mut().poll(context), Poll::Pending),
+                Ordering::Relaxed,
+            );
+        }
     }
 
     fn is_done(&self) -> bool {
@@ -80,25 +98,22 @@ impl Executor {
         self.tasks.push_back(Box::new(task));
     }
 
-    /// Adds [`Task<T>`] to executor's tasks container and immediately poll it.
-    fn run_n_add_async<T>(&mut self, future: Pin<Box<dyn Future<Output = T> + 'static + Send>>)
-    where
-        T: Send + 'static,
-    {
-        let task = Arc::new(Task {
-            future: Mutex::new(future),
-            done: AtomicBool::new(false),
-        });
-        task.update();
-        self.add_task(task);
+    /// Add task for a future to the list of tasks.  
+    fn add_asyncs_from_buffer(&mut self) {
+        let mut input_queue = INPUT_TASK_QUEUE.lock();
+        while input_queue.len() > 0 {
+            self.tasks.push_back(input_queue.pop_front().unwrap());
+        }
     }
 
-    /// Add task for a future to the list of tasks.
-    fn add_async<T>(&mut self, future: Pin<Box<dyn Future<Output = T> + 'static + Send>>)
+    /// Adds [`Future<T>`] to executor's tasks container.
+    #[allow(dead_code)]
+    fn add_async<T>(&mut self, future: Future<T>)
     where
         T: Send + 'static,
     {
         let task = Arc::new(Task {
+            woken_tasks: &WOKEN_TASK_QUEUE,
             future: Mutex::new(future),
             done: AtomicBool::new(false),
         });
@@ -107,11 +122,10 @@ impl Executor {
 
     /// Polls all pending tasks on global executor and remove completed tasks.
     ///
-    /// You may notice, that when all tasks will done, we keep them, although this is objectively useless.
-    /// I think, finding our each complited task from [`Woke::wake_by_ref()`] at [`Executor::tasks`] and drop it is too expensive,
-    /// so we just mark them via [`Task<T>::done`] field as done.
-    /// When all tasks will done and we add new task and run them, old completed tasks will be removed from [`Executor::tasks`] or [`Executor::gerbage_collect()`].
-    fn run(&mut self) {
+    /// When all tasks will done and we add new task and run them, old completed tasks will be removed from [`Executor::tasks`].
+    fn update(&mut self) {
+        self.update_woken();
+        self.add_asyncs_from_buffer();
         for _ in 0..self.tasks.len() {
             let task = self.tasks.pop_front().unwrap();
             if !task.is_done() {
@@ -121,48 +135,63 @@ impl Executor {
         }
     }
 
-    /// Removes completed task from [`Executor::tasks`].
+    /// Polls all pending tasks on global executor and remove completed tasks.
     ///
-    /// As you may also notice, same as [`Executor::run()`], but don't poll tasks.
-    /// Only drop completed tasks.
-    fn gerbage_collect(&mut self) {
-        for _ in 0..self.tasks.len() {
-            let task = self.tasks.pop_front().unwrap();
-            if !task.is_done() {
-                self.tasks.push_back(task);
-            }
+    /// When all tasks will done and we add new task and run them, old completed tasks will be removed from [`Executor::tasks`].
+    fn update_woken(&self) {
+        let mut woken_tasks = self.woken_tasks.lock();
+        while !woken_tasks.is_empty() {
+            woken_tasks.pop_front().unwrap().as_mut().update();
         }
     }
 }
 
 static DEFAULT_EXECUTOR: Mutex<Executor> = Mutex::new(Executor {
+    woken_tasks: &WOKEN_TASK_QUEUE,
     tasks: VecDeque::new(),
 });
 
+/// Its tempts to add futuures to executor dirctly, without global container,
+/// but if we will try add new future, during [`update()`],
+/// will produse dead lock state, because [`update()`] already lock executor.
+static INPUT_TASK_QUEUE: Mutex<TasksList> = Mutex::new(VecDeque::new());
+
+/// Its tempting to have this container internally,
+/// but when we will add new tasks, for getting reference on this container,
+/// we will have to lock executor,
+/// that will dead lock our program if it perform during [`update()`] function, that aslo lock executor.
+static WOKEN_TASK_QUEUE: Mutex<TasksList> = Mutex::new(VecDeque::new());
+
 /// Polls all pending tasks on global executor and remove completed tasks.
-pub fn run() {
-    DEFAULT_EXECUTOR.lock().run();
+pub fn update() {
+    DEFAULT_EXECUTOR.lock().update();
+}
+
+/// Polls all awaked tasks on global executor.
+pub fn update_woken() {
+    let mut woken_tasks = WOKEN_TASK_QUEUE.lock();
+    while !woken_tasks.is_empty() {
+        woken_tasks.pop_front().unwrap().as_mut().update();
+    }
 }
 
 /// Adds task for a future to the list of tasks.
-pub fn add_async<T>(future: impl Future<Output = T> + 'static + Send)
+pub fn add_async<T>(future: impl future::Future<Output = T> + 'static + Send)
 where
     T: Send + 'static,
 {
-    DEFAULT_EXECUTOR.lock().add_async(Box::pin(future));
+    let task = Arc::new(Task {
+        woken_tasks: &WOKEN_TASK_QUEUE,
+        future: Mutex::new(Box::pin(future)),
+        done: AtomicBool::new(false),
+    });
+
+    INPUT_TASK_QUEUE.lock().push_back(Box::new(task));
 }
 
-/// Drops completed tasks and checks is uncompleted tasks remain.
+/// Checks is uncompleted tasks remain.
 pub fn is_done() -> bool {
-    let mut exec = DEFAULT_EXECUTOR.lock();
-    exec.gerbage_collect();
-    exec.tasks.is_empty()
-}
-
-/// Adds task for a future to the list of tasks.
-pub fn run_n_add_async<T>(future: impl Future<Output = T> + 'static + Send)
-where
-    T: Send + 'static,
-{
-    DEFAULT_EXECUTOR.lock().run_n_add_async(Box::pin(future));
+    DEFAULT_EXECUTOR.lock().tasks.is_empty()
+        && INPUT_TASK_QUEUE.lock().is_empty()
+        && WOKEN_TASK_QUEUE.lock().is_empty()
 }

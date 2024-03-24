@@ -4,21 +4,22 @@
 
 ```toml
 [dependencies]
-executor = "0.8"
+executor = "0.9.0"
 ```
 ## Features
 - [x] `#![no_std]` + `alloc`
-- [x] simple enough to learn from! (~ 150 lines)
+- [x] simple enough to learn from! (~ 200 lines)
 - [x] works with WebAssembly
 
 ## WebAssembly
 
 ```rust
 use web::*;
+use executor;
 
 #[no_mangle]
 fn main() {
-    executor::run(async {
+    executor::add_async(async {
         loop {
             set_inner_html(DOM_BODY, "⏰ tic");
             sleep(1000).await;
@@ -26,6 +27,9 @@ fn main() {
             sleep(1000).await;
         }
     });
+    while !executor::is_done() {
+        executor::update();
+    }
 }
 ```
 
@@ -42,13 +46,13 @@ use std::time::Duration;
 fn main() {
     let complete = std::sync::Arc::new(core::sync::atomic::AtomicBool::new(false));
     let ender = complete.clone();
-    executor::run(async move {
+    executor::add_async(async move {
         println!("hello");
         sleep(Duration::from_secs(1)).await;
         println!("world!");
         ender.store(true, core::sync::atomic::Ordering::Release);
     });
-    while !complete.load(core::sync::atomic::Ordering::Acquire) {}
+    while !complete.load(core::sync::atomic::Ordering::Acquire) {executor::update();}
 }
 ```
 

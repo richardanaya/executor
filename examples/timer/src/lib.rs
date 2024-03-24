@@ -1,8 +1,9 @@
 use web::*;
-
+use executor;
+//use web::sleep;
 #[no_mangle]
 fn main() {
-    executor::run(async {
+    executor::add_async(async {
         loop {
             set_inner_html(DOM_BODY, "⏰ tic");
             sleep(1000).await;
@@ -10,4 +11,7 @@ fn main() {
             sleep(1000).await;
         }
     });
+    while !executor::is_done() {
+        executor::update();
+    }
 }

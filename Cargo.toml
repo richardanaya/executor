@@ -1,6 +1,6 @@
 [package]
 name = "executor"
-version = "0.8.4"
+version = "0.9.0"
 authors = ["Richard Anaya"]
 edition = "2021"
 description = "A minimalistic async/await executor"

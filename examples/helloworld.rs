@@ -25,5 +25,7 @@ fn main() -> () {
     executor::add_async(async {
         a().await;
     });
-    executor::run();
+    while !executor::is_done() {
+        executor::update();
+    }
 }

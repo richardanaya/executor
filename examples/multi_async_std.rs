@@ -10,22 +10,23 @@ async fn async_sleep(print_name: &str, time: Duration) {
 
 fn main() {
     // Creates new task. that wiill sleep 1 sec and complete.
-    // Execute only after run() method.
+    // Execute only after update() method.
     executor::add_async(async_sleep("call_1", Duration::from_secs(1)));
 
-    // Run all tasks, that was add by add_async or run_n_async.
-    executor::run();
+    // Poll all tasks once, that added by add_async or add_async.
+    // We can also do other stuff after it.
+    executor::update();
 
-    // Creates new task. that wiill sleep 2 sec and complete.
-    // Execute immediately.
-    // Also polled by run().
+    // Previous sleep at progress and it dont need extra polling, so we can continue do our stuff.
     // After this function executor will execute 2 tasks simultaneously.
-    executor::run_n_add_async(async_sleep("call_2", Duration::from_secs(2)));
+    executor::add_async(async_sleep("call_2", Duration::from_secs(2)));
 
     // Another one task for fun :)
-    executor::run_n_add_async(async_sleep("call_2", Duration::from_secs(3)));
+    executor::add_async(async_sleep("call_2", Duration::from_secs(3)));
 
     // Checks if we have incompleted tasks.
     // Drops completed task from internal task collection.
-    while !executor::is_done() {}
+    while !executor::is_done() {
+        executor::update();
+    }
 }
