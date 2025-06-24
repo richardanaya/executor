@@ -6,7 +6,7 @@ edition = "2021"
 description = "A minimalistic async/await executor"
 license = "MIT OR Apache-2.0"
 categories = ["wasm", "no-std"]
-repository = "https://www.github.com/richardanaya/executor"
+repository = "https://github.com/richardanaya/executor"
 readme = "README.md"
 rust-version="1.63"
 
