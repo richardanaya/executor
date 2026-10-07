@@ -13,7 +13,11 @@ rust-version="1.63"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-spin = "0"
+# 0.9.9 is the newest `spin` that still builds on the declared MSRV (1.63).
+# Newer 0.x releases pull `lock_api` versions that need Rust 1.71+.
+# Only the raw spin mutex is used; `lock_api` stays off so that dependency
+# cannot bump the MSRV.
+spin = { version = "0.9.9", default-features = false, features = ["mutex", "spin_mutex", "lazy"] }
 
 [dev-dependencies]
 async-std = "1"

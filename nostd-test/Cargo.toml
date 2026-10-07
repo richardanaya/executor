@@ -1,0 +1,23 @@
+[package]
+name = "executor-nostd-test"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Bare-metal no_std tests for the executor crate"
+
+[dependencies]
+executor = { path = ".." }
+
+[[bin]]
+name = "executor-nostd-test"
+path = "src/main.rs"
+test = false
+bench = false
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+lto = false
+codegen-units = 1

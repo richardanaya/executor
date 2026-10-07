@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --check
+      - run: cargo fmt --manifest-path nostd-test/Cargo.toml --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: thumbv7m-none-eabi
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo clippy --manifest-path nostd-test/Cargo.toml --target thumbv7m-none-eabi --all-targets -- -D warnings
+
+  test:
+    name: test, doc, examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -- --test-threads=1
+      - run: cargo doc --no-deps
+      - run: cargo run --example helloworld
+      - run: cargo run --example futures_chain
+      - run: cargo run --example multi_async_std
+      - run: cargo run --example signal
+
+  msrv:
+    name: msrv 1.63
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.63.0
+        with:
+          targets: wasm32-unknown-unknown,thumbv7m-none-eabi
+      - name: library and no_std targets on 1.63
+        run: |
+          # `cargo test` also builds the async-std example stack, whose current
+          # crates need a newer rustc. The library itself does not.
+          cargo build --lib
+          cargo check --target wasm32-unknown-unknown --lib
+          cargo check --target thumbv7m-none-eabi --lib
+
+  nostd:
+    name: no_std build and qemu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown,thumbv7m-none-eabi
+      - name: install qemu
+        run: sudo apt-get update && sudo apt-get install -y qemu-system-arm
+      - name: check library on no_std targets
+        run: |
+          cargo check --target wasm32-unknown-unknown --lib
+          cargo check --target thumbv7m-none-eabi --lib
+      - name: run bare-metal tests under qemu
+        run: |
+          cargo build --manifest-path nostd-test/Cargo.toml --release --target thumbv7m-none-eabi
+          qemu-system-arm \
+            -cpu cortex-m3 \
+            -machine lm3s6965evb \
+            -nographic \
+            -semihosting-config enable=on,target=native \
+            -kernel nostd-test/target/thumbv7m-none-eabi/release/executor-nostd-test
+
+  miri:
+    name: miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - run: cargo miri setup
+      - run: cargo miri test -- --test-threads=1

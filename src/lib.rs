@@ -9,7 +9,7 @@ use {
         sync::atomic::Ordering,
         task::{Context, Poll, Waker},
     },
-    spin::Mutex,
+    spin::{Lazy, Mutex},
 };
 
 type TasksList = VecDeque<Box<dyn Pendable + core::marker::Send + core::marker::Sync>>;
@@ -19,11 +19,6 @@ type Future<T> = Pin<Box<dyn future::Future<Output = T> + Send + 'static>>;
 struct Executor {
     /// Tasks collection. Use [`update()`] functon for polling all tasks and continue them progress.
     tasks: TasksList,
-
-    /// Woken Tasks collection. Contain woken tasks from [`Executor::tasks`].
-    /// [`update()`] function aslo can continue progress of this tasks,
-    /// but [`update_woken()`] function will be preferred, because poll only tasks, that was awakened.
-    woken_tasks: &'static Mutex<TasksList>,
 }
 
 /// [`Task<T>`] interface for executor
@@ -44,10 +39,6 @@ trait Pendable {
 ///
 /// Task is our unit of execution and holds a future are waiting on.
 struct Task<T> {
-    /// Awaked tasks collection.
-    ///
-    /// Shall contain itself to this, when was awaked by ['wake() or wake_by_ref()'].
-    woken_tasks: &'static Mutex<TasksList>,
     future: Mutex<Future<T>>,
     /// Returns `true` if the state is corresponding to [`core::task::Poll::Ready`] otherwise - false.
     ///
@@ -60,11 +51,12 @@ struct Task<T> {
 // `wake_by_ref` clones the `Arc` and calls this.
 impl<T: 'static> Wake for Task<T> {
     fn wake(self: Arc<Self>) {
-        let woken_tasks = self.woken_tasks;
-        // its tempting to call update() "in place", but dont do this for 2 reason:
-        // 1) for some reason, somethimes cant poll our future, exactly after big latency between update's(), for example, because of sleep() call.
-        // 2) if call wake() or wake_by_ref() at poll, being at woken_tasks, will produce dead lock state.
-        woken_tasks.lock().push_back(Box::new(self));
+        // Its tempting to call update() here, but dont:
+        // 1) a wake can arrive long after the last poll (sleep, another thread).
+        // 2) spin::Mutex is not reentrant. Polling while `update` / `update_woken`
+        //    is already on the stack can lock this same queue. Those functions
+        //    drain the queue and drop the guard before they poll.
+        WOKEN_TASK_QUEUE.lock().push_back(Box::new(self));
     }
 }
 
@@ -114,7 +106,6 @@ impl Executor {
         T: Send + 'static,
     {
         let task = Arc::new(Task {
-            woken_tasks: &WOKEN_TASK_QUEUE,
             future: Mutex::new(future),
             done: AtomicBool::new(false),
         });
@@ -129,39 +120,48 @@ impl Executor {
         self.add_asyncs_from_buffer();
         for _ in 0..self.tasks.len() {
             let task = self.tasks.pop_front().unwrap();
+            if task.is_done() {
+                continue;
+            }
+            task.update();
             if !task.is_done() {
-                task.update();
                 self.tasks.push_back(task);
             }
         }
     }
 
-    /// Polls all pending tasks on global executor and remove completed tasks.
+    /// Polls tasks queued by a waker. Does not remove them from the main list.
     ///
-    /// When all tasks will done and we add new task and run them, old completed tasks will be removed from [`Executor::tasks`].
+    /// Completed tasks stay in [`Executor::tasks`] until [`Executor::update`] drops them.
     fn update_woken(&self) {
-        let mut woken_tasks = self.woken_tasks.lock();
-        while !woken_tasks.is_empty() {
-            woken_tasks.pop_front().unwrap().as_mut().update();
-        }
+        poll_woken_queue();
     }
 }
 
-static DEFAULT_EXECUTOR: Mutex<Executor> = Mutex::new(Executor {
-    woken_tasks: &WOKEN_TASK_QUEUE,
-    tasks: VecDeque::new(),
-});
+fn new_executor() -> Mutex<Executor> {
+    Mutex::new(Executor {
+        tasks: VecDeque::new(),
+    })
+}
+
+// `VecDeque::new` is not const on the declared MSRV (1.63), so the queues are
+// built on first use. `Lazy` is still `no_std`.
+static DEFAULT_EXECUTOR: Lazy<Mutex<Executor>> = Lazy::new(new_executor);
+
+fn new_task_queue() -> Mutex<TasksList> {
+    Mutex::new(VecDeque::new())
+}
 
 /// Its tempts to add futuures to executor dirctly, without global container,
 /// but if we will try add new future, during [`update()`],
 /// will produse dead lock state, because [`update()`] already lock executor.
-static INPUT_TASK_QUEUE: Mutex<TasksList> = Mutex::new(VecDeque::new());
+static INPUT_TASK_QUEUE: Lazy<Mutex<TasksList>> = Lazy::new(new_task_queue);
 
 /// Its tempting to have this container internally,
 /// but when we will add new tasks, for getting reference on this container,
 /// we will have to lock executor,
 /// that will dead lock our program if it perform during [`update()`] function, that aslo lock executor.
-static WOKEN_TASK_QUEUE: Mutex<TasksList> = Mutex::new(VecDeque::new());
+static WOKEN_TASK_QUEUE: Lazy<Mutex<TasksList>> = Lazy::new(new_task_queue);
 
 /// Polls all pending tasks on global executor and remove completed tasks.
 pub fn update() {
@@ -170,9 +170,23 @@ pub fn update() {
 
 /// Polls all awaked tasks on global executor.
 pub fn update_woken() {
-    let mut woken_tasks = WOKEN_TASK_QUEUE.lock();
-    while !woken_tasks.is_empty() {
-        woken_tasks.pop_front().unwrap().as_mut().update();
+    poll_woken_queue();
+}
+
+/// Drain the woken queue, release it, then poll.
+///
+/// The guard is dropped before any poll so a `wake` from inside a task can
+/// enqueue again. `spin::Mutex` is not reentrant. Tasks queued by that wake
+/// wait for the next `update_woken`. Tasks already marked done are not polled.
+fn poll_woken_queue() {
+    let batch = {
+        let mut woken_tasks = WOKEN_TASK_QUEUE.lock();
+        core::mem::take(&mut *woken_tasks)
+    };
+    for task in batch {
+        if !task.is_done() {
+            task.update();
+        }
     }
 }
 
@@ -182,7 +196,6 @@ where
     T: Send + 'static,
 {
     let task = Arc::new(Task {
-        woken_tasks: &WOKEN_TASK_QUEUE,
         future: Mutex::new(Box::pin(future)),
         done: AtomicBool::new(false),
     });

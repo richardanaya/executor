@@ -21,7 +21,7 @@ async fn a() {
     println!("goodbye world");
 }
 
-fn main() -> () {
+fn main() {
     executor::add_async(async {
         a().await;
     });
