@@ -94,8 +94,8 @@ impl Executor {
     /// Add task for a future to the list of tasks.  
     fn add_asyncs_from_buffer(&mut self) {
         let mut input_queue = INPUT_TASK_QUEUE.lock();
-        while input_queue.len() > 0 {
-            self.tasks.push_back(input_queue.pop_front().unwrap());
+        while let Some(task) = input_queue.pop_front() {
+            self.tasks.push_back(task);
         }
     }
 
