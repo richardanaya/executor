@@ -8,7 +8,7 @@ async fn async_sleep(print_name: &str, time: Duration) {
     println!("{print_name}: after sleep {sleep_time} ms");
 }
 
-fn main() -> () {
+fn main() {
     println!("hello");
 
     executor::add_async(async {
