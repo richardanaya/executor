@@ -3,14 +3,13 @@
 use core::{future, sync::atomic::AtomicBool};
 extern crate alloc;
 use {
-    alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::Arc},
+    alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::Arc, task::Wake},
     core::{
         pin::Pin,
         sync::atomic::Ordering,
-        task::{Context, Poll},
+        task::{Context, Poll, Waker},
     },
     spin::Mutex,
-    woke::{waker_ref, Woke},
 };
 
 type TasksList = VecDeque<Box<dyn Pendable + core::marker::Send + core::marker::Sync>>;
@@ -56,14 +55,16 @@ struct Task<T> {
     done: AtomicBool,
 }
 
-// Implement what we would like to do when a task gets woken up.
-impl<T: 'static> Woke for Task<T> {
-    fn wake_by_ref(arc_self: &Arc<Self>) {
-        let woken = arc_self.clone();
+// What to do when a task's `Waker` is called.
+// `Arc<Task<T>>` becomes a `Waker` through `alloc::task::Wake` and `Waker::from`.
+// `wake_by_ref` clones the `Arc` and calls this.
+impl<T: 'static> Wake for Task<T> {
+    fn wake(self: Arc<Self>) {
+        let woken_tasks = self.woken_tasks;
         // its tempting to call update() "in place", but dont do this for 2 reason:
         // 1) for some reason, somethimes cant poll our future, exactly after big latency between update's(), for example, because of sleep() call.
         // 2) if call wake() or wake_by_ref() at poll, being at woken_tasks, will produce dead lock state.
-        arc_self.woken_tasks.lock().push_back(Box::new(woken));
+        woken_tasks.lock().push_back(Box::new(self));
     }
 }
 
@@ -71,7 +72,7 @@ impl<T: 'static> Pendable for Arc<Task<T>> {
     fn update(&self) {
         if !self.future.is_locked() {
             let mut future = self.future.lock();
-            let waker = waker_ref(self);
+            let waker = Waker::from(self.clone());
             // Poll our future.
             // If future is done, mark it via Task<T>::done field.
             // We can't poll "done futures", so we mark "done futures" at Task<T>
