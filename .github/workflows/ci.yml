@@ -64,13 +64,47 @@ jobs:
   nostd:
     name: no_std build and qemu
     runs-on: ubuntu-latest
+    # Bound a hang in apt or QEMU. The runner's own limit is 6 hours.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown,thumbv7m-none-eabi
       - name: install qemu
-        run: sudo apt-get update && sudo apt-get install -y qemu-system-arm
+        run: |
+          # Runner images list http://azure.archive.ubuntu.com at priority 1 and
+          # https://archive.ubuntu.com at priority 2 (mirror+file:/etc/apt/apt-mirrors.txt).
+          # On master run 37679549289 Azure ignored InRelease, then apt printed Ign for
+          # noble-updates Packages from that host and never logged another line. It did
+          # not fail over, and GitHub cancelled the job 6 hours later. The build and
+          # QEMU never started. The same run had already fetched InRelease from
+          # archive.ubuntu.com, so use that mirror only. Acquire timeouts plus
+          # `timeout` cover a later stall that apt itself does not abort.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            printf 'https://archive.ubuntu.com/ubuntu/\tpriority:1\n' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+          sudo find /etc/apt -type f \( -name 'sources.list' -o -name '*.list' -o -name '*.sources' \) -print0 |
+            sudo xargs -0 -r sed -i \
+              -e 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
+              -e 's|https://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g'
+          printf '%s\n' \
+            'Acquire::http::Timeout "30";' \
+            'Acquire::https::Timeout "30";' \
+            'Acquire::Retries "3";' |
+            sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null
+          run_apt() {
+            if ! sudo timeout -k 20 180 "$@"; then
+              status=$?
+              if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+                echo "apt hung: $* (killed after 180s)"
+                exit 1
+              fi
+              exit "$status"
+            fi
+          }
+          run_apt apt-get update
+          run_apt apt-get install -y qemu-system-arm
       - name: check library on no_std targets
         run: |
           cargo check --target wasm32-unknown-unknown --lib
@@ -78,12 +112,21 @@ jobs:
       - name: run bare-metal tests under qemu
         run: |
           cargo build --manifest-path nostd-test/Cargo.toml --release --target thumbv7m-none-eabi
-          qemu-system-arm \
+          # The guest exits through semihosting SYS_EXIT. Kill a guest that never does.
+          if ! timeout -k 5 60 qemu-system-arm \
             -cpu cortex-m3 \
             -machine lm3s6965evb \
             -nographic \
             -semihosting-config enable=on,target=native \
             -kernel nostd-test/target/thumbv7m-none-eabi/release/executor-nostd-test
+          then
+            status=$?
+            if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+              echo "qemu did not exit within 60s; semihosting exit never arrived"
+              exit 1
+            fi
+            exit "$status"
+          fi
 
   miri:
     name: miri
